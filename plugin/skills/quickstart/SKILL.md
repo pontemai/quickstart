@@ -128,20 +128,52 @@ Move on once it shows a recent report from the device.
 Copy this skill's `package/` directory to `./pontem-quickstart/` in the user's
 working directory, so they keep the files. Run the rest of this step from there.
 
-1. Create or update the config namespace. Re-running is safe.
+1. Give the page read access to Pontem. The page shows its own device as the
+   Pontem API reports it, using a service-account key that can only read
+   devices. The key goes straight into a tenant secret and is never printed.
+
+   Before creating the key, tell the user in one line that it's read-only: it can
+   see devices in the tenant but can't change anything.
+
+   Skip this if `pontem secrets list` already shows `quickstart-api-key`. In that
+   case, use its `LATEST` version number in sub-step 2 instead of `1`.
+
+   Reuse the `sa_quickstart` service account if `pontem service-account list`
+   shows one. Otherwise create it; it prints the new ID (`sa_…`):
+
+   ```bash
+   pontem service-account create --name sa_quickstart \
+     --description "Reads device details for the quickstart page" \
+     --initial-scopes devices:read
+   ```
+
+   Issue a 30-day key and store it as the secret in one pipe. `key create` writes
+   the key only to stdout, so it never appears in the output:
+
+   ```bash
+   pontem service-account key create --sa <sa-id> --name quickstart-page --expires 30d \
+     | tr -d '\n' | pontem secrets create quickstart-api-key --from-file -
+   ```
+
+2. In `namespace.yaml`, set the `ADMIN_URL` default to
+   `https://<control-plane>/admin/o/<tenant>`, the organization's admin URL from
+   the inputs. The page links to the device there and calls the Pontem API on
+   the same host. If the secret's version isn't `1`, set `API_KEY`'s
+   `default.version` to match. Then create or update the namespace. Re-running is
+   safe.
 
    ```bash
    pontem config namespace set -f namespace.yaml
    ```
 
-2. Create the package if it doesn't exist:
+3. Create the package if it doesn't exist:
 
    ```bash
    pontem package list
    pontem package create -f package.yaml
    ```
 
-3. Publish version `v0.1.0` if it isn't published yet:
+4. Publish version `v0.2.0` if it isn't published yet:
 
    ```bash
    pontem package version list quickstart
@@ -193,11 +225,17 @@ pontem app url <app>
 ```
 
 Give the user the link. Opening it asks them to sign in to Pontem, then shows the
-page with the greeting "Hello from Pontem".
+page with the greeting "Hello World!" and a panel of their device's details from
+the Pontem API.
+
+If the panel shows an error instead, the message says why. The usual one is "The
+Pontem API refused the key": check that `sa_quickstart` has `devices:read` with
+`pontem service-account describe <sa-id>`.
 
 ## Step 8: Change a config value
 
-Ask the user what the page should say instead of "Hello from Pontem".
+Ask the user what the page should say instead of "Hello World!". Tell them to keep
+the page open: it watches for the change and updates on its own.
 
 Record the current state:
 
@@ -209,29 +247,34 @@ Set the new value for this device only. It overrides the namespace default witho
 changing it for other devices:
 
 ```bash
-pontem config override set GREETING="<their text>" --namespace quickstart --scope device:<device-name> --yes
+pontem config override set GREETING='<their text>' --namespace quickstart --scope device:<device-name> --yes
 ```
+
+Single quotes keep the shell from expanding `!`, `$` or backticks in their text. Write
+a single quote inside it as `'\''`.
 
 The device picks the change up on its next check-in, about every 30 seconds, and
 restarts the service with the new value. Poll `pontem curl <app> /config.json` every
-10 seconds until `started_at` changes, for up to 3 minutes. If it hasn't changed by
+10 seconds until `boot_id` changes, for up to 3 minutes. If it hasn't changed by
 then, run `pontem device package redeploy quickstart --name <device-name> --yes` and
 poll again.
 
 Show the user what changed, as a small before and after table of `greeting` and
 `started_at`. Then explain in two or three sentences:
 
-- The namespace default is still "Hello from Pontem". The override applies to this
+- The namespace default is still "Hello World!". The override applies to this
   device only.
 - The daemon on the device restarted the service with the new value. Nobody
   published a new package version.
-- Reloading the browser link shows the new greeting.
+- The open page showed the service going down and coming back with the new
+  greeting. Its activity log lists both.
 
 ## Wrap up
 
 Tell the user what they now have, in one short list: the enrolled device, the
 `quickstart` package and version, the `quickstart` config namespace and their
-device override, and the app link. Point them at `./pontem-quickstart/` for the
+device override, the `sa_quickstart` service account and its 30-day key, and the
+app link. Point them at `./pontem-quickstart/` for the
 files.
 
 Offer these next steps without running them:
@@ -240,3 +283,9 @@ Offer these next steps without running them:
   `pontem config override delete --namespace quickstart --scope device:<device-name> --key GREETING`
 - Remove the quickstart from the device:
   `pontem app remove <app>` and `pontem device package remove quickstart --name <device-name>`
+- Revoke the page's key: find its ID with `pontem service-account key list --sa <sa-id>`,
+  then `pontem service-account key revoke <key-id> --sa <sa-id>`. The page's
+  device panel stops working; the rest of the page keeps running.
+- Renew the key before it expires in 30 days: issue a new one and publish it as
+  a new version of the secret, then point `API_KEY` at that version.
+  `pontem service-account key create --sa <sa-id> --name quickstart-page --expires 30d | tr -d '\n' | pontem secrets publish quickstart-api-key --from-file -`

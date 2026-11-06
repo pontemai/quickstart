@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pontem Quickstart</title>
+<link rel="icon" href="static/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="static/pontem.css">
+<link rel="stylesheet" href="static/app.css">
+</head>
+<body>
+<header class="nav">
+  <a class="nav-logo" href="https://pontemai.com" target="_blank" rel="noopener" aria-label="Pontem">
+    <svg viewBox="0 0 660.1 90" aria-hidden="true">
+      <path d="M218.1,2.4c8.4,0,15.3,2.6,20.7,7.7c5.5,5.2,8.2,11.7,8.2,19.6c0,8-2.7,14.6-8.2,19.8 c-5.5,5.2-12.4,7.9-20.7,7.9h-14.5v30.3h-18V2.4H218.1z M218.1,40c3.1,0,5.7-1,7.7-2.9c2-2,3.1-4.4,3.1-7.4c0-2.9-1-5.2-3.1-7.1 c-2-1.9-4.6-2.9-7.7-2.9h-14.5V40H218.1z"/>
+      <path d="M274.3,6.9c6.6-3.8,14-5.7,22.2-5.7c8.2,0,15.6,1.9,22.2,5.7c6.7,3.8,11.9,9.1,15.7,15.8 c3.8,6.7,5.7,14.2,5.7,22.4c0,8.2-1.9,15.7-5.7,22.4c-3.8,6.7-9,12-15.7,15.8c-6.7,3.8-14.1,5.7-22.2,5.7 c-8.2,0-15.6-1.9-22.2-5.7c-6.6-3.8-11.8-9.1-15.6-15.8c-3.8-6.7-5.7-14.2-5.7-22.4c0-8.2,1.9-15.7,5.7-22.4 C262.4,16,267.6,10.7,274.3,6.9z M314.3,26.3c-4.8-5-10.7-7.5-17.8-7.5s-13.1,2.5-17.8,7.5c-4.8,5-7.1,11.3-7.1,18.8 c0,7.5,2.4,13.8,7.1,18.8c4.8,5,10.7,7.6,17.8,7.6s13.1-2.5,17.8-7.6c4.8-5,7.1-11.3,7.1-18.8C321.5,37.5,319.1,31.3,314.3,26.3z"/>
+      <path d="M350.6,2.4h15.3l34.7,49.7V2.4h18v85.3h-15.1l-34.9-49.7v49.7h-18V2.4z"/>
+      <path d="M495.6,2.4v17.3h-25v68h-18v-68h-24.9V2.4H495.6z"/>
+      <path d="M504.6,2.4h52.2v17.3h-34.2V35h30.5v17.3h-30.5v18h34.2v17.3h-52.2V2.4z"/>
+      <path d="M567.9,87.7V2.4h21.9l25.3,58.8l26.6-58.8h18.4v85.3h-18V37.6l-21.8,50.1h-13l-21.3-50.1v50.1H567.9z"/>
+      <path d="M156,39h-15.1C129.7,16,105.7,0,78,0C50.3,0,26.3,16,15.1,39H0v17.8h9.3c-0.7,3.8-1,7.7-1,11.7h18.1 c0-4,0.5-8,1.4-11.7h1.7c16.5,0,31.7,8.2,40.9,21.8L78,90l7.6-11.3C94.7,65,110,56.8,126.4,56.8h1.7c0.9,3.8,1.4,7.7,1.4,11.7 h18.1c0-4-0.4-7.9-1-11.7h9.3V39z M78,59.5C66.9,48,52,40.8,35.9,39.3c9.4-13,24.7-21.5,42.1-21.5c17.4,0,32.8,8.5,42.1,21.5 C104,40.8,89.1,48,78,59.5z"/>
+    </svg>
+  </a>
+  <div class="nav-right">
+    <a class="cta" id="view-in-pontem" target="_blank" rel="noopener" hidden><span class="cta-long">View in&nbsp;</span>Pontem&nbsp;↗</a>
+    <span class="status" id="status"><span class="status-dot"></span><span id="status-text">Live</span></span>
+  </div>
+</header>
+
+<main class="hero">
+  <section class="copy">
+    <p class="eyebrow">Running on your device</p>
+    <h1 id="greeting">{{greeting}}</h1>
+    <p class="lead">
+      This page is served by a container on <strong id="lead-host">your device</strong>,
+      deployed by Pontem. Change <code>GREETING</code> in the <code>quickstart</code>
+      config namespace and watch it update here.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-tab">Config</span>
+        <span class="panel-note">Namespace · quickstart</span>
+      </div>
+      <dl class="kv">
+        <dt>GREETING</dt><dd id="kv-greeting"></dd>
+      </dl>
+      <div class="panel-head panel-head-inner">
+        <span class="panel-tab">Activity</span>
+        <span class="panel-note">This browser session</span>
+      </div>
+      <ol class="log" id="log" aria-live="polite"></ol>
+    </div>
+
+    <div class="try">
+      <span class="try-label">Try it</span>
+      <code id="try-cmd"></code>
+      <button type="button" class="copy-btn" id="copy-btn">Copy</button>
+    </div>
+  </section>
+
+  <section class="fig" aria-label="Your device">
+    <div class="fig-tag"><b>Fig. 1</b><span>Pontem → your device</span></div>
+    <svg id="scene" role="img" aria-label="Pontem control plane connected to your device"></svg>
+    <div class="spec-wrap">
+      <div class="spec-head"><span>From the Pontem API</span><span id="spec-age"></span></div>
+      <dl class="spec" id="spec"></dl>
+      <p class="spec-error" id="spec-error" hidden></p>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Device <b id="foot-device"></b></span>
+  <span>Package <b id="foot-package"></b></span>
+  <span>Started <b id="foot-started"></b></span>
+  <span id="foot-daemon" hidden>Daemon <b></b></span>
+  <span id="foot-viewer" hidden>Signed in as <b></b></span>
+</footer>
+
+<script id="boot" type="application/json">{{boot}}</script>
+<script src="static/app.js"></script>
+</body>
+</html>

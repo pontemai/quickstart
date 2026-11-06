@@ -37,8 +37,20 @@ Claude asks for your admin app URL and the device to use.
 | `plugin/skills/quickstart/package/` | The compose package and config namespace it deploys |
 | `app/` | Source for the `ghcr.io/pontemai/quickstart` image |
 
+## How the page reads its device
+
+The page shows its device as the Pontem API reports it. The skill creates a
+service account with `devices:read`, stores a 30-day key as the tenant secret
+`quickstart-api-key`, and passes it to the container through the `API_KEY`
+config key. The container calls the API itself; the key never reaches the
+browser.
+
 ## Releasing the image
 
 Push a tag `v<version>` to build `ghcr.io/pontemai/quickstart:<version>` for
 amd64 and arm64. Update the image tag in `plugin/skills/quickstart/package/docker-compose.yaml`
 and the version in `version.yaml` to match.
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).

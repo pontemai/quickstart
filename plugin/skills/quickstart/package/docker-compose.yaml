@@ -1,11 +1,15 @@
 services:
   web:
-    image: ghcr.io/pontemai/quickstart:0.1.0
+    image: ghcr.io/pontemai/quickstart:0.2.0
     restart: unless-stopped
     ports:
-      - "${HOST_PORT}:8080"
+      # Loopback only: the app link reaches it through the connector on the
+      # device, and nothing else on the network can.
+      - "127.0.0.1:${HOST_PORT}:8080"
     environment:
       GREETING: "${GREETING}"
+      ADMIN_URL: "${ADMIN_URL}"
+      API_KEY: "${API_KEY}"
       PONTEM_TENANT_ID: "${PONTEM_TENANT_ID}"
       PONTEM_DEVICE_ID: "${PONTEM_DEVICE_ID}"
       PONTEM_PACKAGE_VERSION: "${PONTEM_PACKAGE_VERSION}"
