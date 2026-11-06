@@ -1,0 +1,11 @@
+namespace: quickstart
+description: Config for the Pontem quickstart package
+keys:
+  GREETING:
+    type: string
+    default: "Hello from Pontem"
+    description: Headline shown on the quickstart page
+  HOST_PORT:
+    type: integer
+    default: 8080
+    description: Port on the device the quickstart page listens on

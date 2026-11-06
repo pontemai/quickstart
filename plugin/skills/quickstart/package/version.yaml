@@ -1,0 +1,4 @@
+package_id: quickstart
+tag: v0.1.0
+config_namespace: quickstart
+notes: "Quickstart v0.1.0"

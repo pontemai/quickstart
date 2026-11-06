@@ -1,0 +1,4 @@
+package_id: quickstart
+name: Quickstart
+description: A web page that shows the config Pontem gave it
+package_type: compose

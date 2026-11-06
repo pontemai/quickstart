@@ -1,0 +1,242 @@
+---
+name: quickstart
+description: >
+  Use when someone wants to try Pontem end to end: install the pontem CLI, log in,
+  enroll a Linux device over SSH, publish and install the quickstart compose package
+  with its config namespace, open the running service through a browser link, then
+  change a config value and watch it land on the device. Triggers: "/pontem:quickstart",
+  "onboard me to Pontem", "set up Pontem on my device", "Pontem quickstart".
+---
+
+# Pontem quickstart
+
+You walk the user from nothing to a service running on their own device, managed by
+Pontem, with a browser link to it and a config change they made themselves. Every
+step is idempotent: before creating something, check whether it already exists and
+reuse it. If the user re-runs this skill, pick up where the last run stopped.
+
+Talk to the user in short lines: what you are about to do, then the result. Show
+commands you run only when they fail or when the user has to run one.
+
+This skill's directory holds `package/`, the four files you publish in step 5.
+
+## Inputs
+
+Collect these before step 1. Take them from the user's message when present.
+
+| Input | Where it comes from |
+|---|---|
+| Control plane | The domain in the admin app URL: `https://<control-plane>/admin/o/<tenant>/…` |
+| Tenant | The segment after `/o/` in that URL |
+| SSH target | Whatever the user passes to `ssh` to reach the device: an alias, `host`, or `user@host` |
+| Device name | Name shown in Pontem. Default: the device's short hostname. Lowercase letters, digits, `-` |
+
+## Step 1: Install the CLI
+
+```bash
+command -v pontem || ls ~/.local/bin/pontem
+```
+
+If neither finds it:
+
+```bash
+curl -sSL https://storage.googleapis.com/pontem-cli-releases/install.sh | bash
+```
+
+The installer puts `pontem` in `~/.local/bin`. If that is not on `PATH` in your shell,
+call it as `~/.local/bin/pontem` for the rest of this run. Confirm with `pontem version`.
+
+## Step 2: Log in
+
+```bash
+pontem status
+```
+
+If it shows the right control plane and tenant and a valid token, skip ahead.
+Otherwise:
+
+```bash
+pontem login --url <control-plane> --tenant <tenant>
+```
+
+This opens a browser. Tell the user to finish signing in there, then re-run
+`pontem status` to confirm.
+
+## Step 3: Check the device
+
+The device must be Linux on x86_64 or ARM64 with systemd and Docker Engine. Probe it
+without prompting:
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=10 <ssh-target> '
+  uname -m
+  command -v systemctl >/dev/null && echo systemd=ok || echo systemd=missing
+  command -v curl >/dev/null && echo curl=ok || echo curl=missing
+  command -v docker >/dev/null && echo docker=ok || echo docker=missing
+  sudo -n true 2>/dev/null && echo sudo=nopasswd || echo sudo=password
+  (ss -ltn 2>/dev/null || netstat -ltn 2>/dev/null) | grep -qE "[:.]8080[[:space:]]" && echo port8080=busy || echo port8080=free
+  hostname -s'
+```
+
+Act on the result:
+
+- **SSH fails:** the user needs key-based SSH to the device. Ask them to fix it and
+  give you a target that works with `ssh <target>` and no password prompt.
+- **`uname -m` is not `x86_64` or `aarch64`, or systemd is missing:** stop. The
+  device isn't supported.
+- **curl or Docker missing:** tell the user. Offer to install Docker with Docker's
+  script (`curl -fsSL https://get.docker.com | sudo sh` on the device). Run it only
+  if they say yes.
+- **`port8080=busy`:** pick a free port (try 8081, 8082, …) and remember it as the
+  host port. You set it in step 6.
+- **`sudo=password`:** you can't answer the sudo prompt from here. In step 4 the user
+  runs enroll in their own terminal.
+
+## Step 4: Enroll the device
+
+Check whether a device with this name already exists:
+
+```bash
+pontem device list
+```
+
+If it does, ask the user whether it's this machine. If yes, skip to the end of this
+step. If no, pick another name.
+
+With `sudo=nopasswd`, enroll it yourself:
+
+```bash
+pontem device enroll --name <device-name> -- <ssh-target>
+```
+
+With `sudo=password`, ask the user to run that same command in a separate terminal,
+where they can type the device's sudo password, and tell you when it finishes.
+
+Enrollment takes about a minute. If it fails after creating the device, the CLI
+prints a retry command with `--id` and `--token`. Run that instead of enrolling again.
+
+Wait until the device reports in. Poll every 10 seconds, for up to 3 minutes:
+
+```bash
+pontem device describe --name <device-name>
+```
+
+Move on once it shows a recent report from the device.
+
+## Step 5: Publish the quickstart package
+
+Copy this skill's `package/` directory to `./pontem-quickstart/` in the user's
+working directory, so they keep the files. Run the rest of this step from there.
+
+1. Create or update the config namespace. Re-running is safe.
+
+   ```bash
+   pontem config namespace set -f namespace.yaml
+   ```
+
+2. Create the package if it doesn't exist:
+
+   ```bash
+   pontem package list
+   pontem package create -f package.yaml
+   ```
+
+3. Publish version `v0.1.0` if it isn't published yet:
+
+   ```bash
+   pontem package version list quickstart
+   pontem package publish -f version.yaml --compose-file docker-compose.yaml --yes
+   ```
+
+## Step 6: Install it on the device
+
+If step 3 found port 8080 busy, set the port for this device first:
+
+```bash
+pontem config override set HOST_PORT=<port> --namespace quickstart --scope device:<device-name> --yes
+```
+
+Install and wait for it to settle. The install also activates the `quickstart`
+config namespace on the device.
+
+```bash
+pontem device package install quickstart --name <device-name> --latest --if-not-assigned --wait --yes
+```
+
+The first install pulls the image, which takes 30 to 90 seconds. If it ends in
+anything but Healthy, run `pontem device describe --name <device-name>` and
+`pontem device logs --name <device-name>`, show the user what failed, and stop.
+
+## Step 7: Give the user a link
+
+The link goes through Pontem's app proxy, so the device needs a connector.
+
+```bash
+pontem device connector enable --name <device-name> --yes
+```
+
+If it says the connector package or app proxy isn't available on this control plane,
+tell the user their administrator has to enable app access, and skip to step 8.
+Use `ssh <ssh-target> curl -s localhost:<port>/config.json` for the before and after.
+
+Publish the port as an app. Check `pontem app list` first; reuse an existing
+`quickstart` app on this device.
+
+```bash
+pontem app publish quickstart --device <device-name> --port <port> --output json
+```
+
+Keep the app ID from the output and use it as `<app>` from here on. Print the link:
+
+```bash
+pontem app url <app>
+```
+
+Give the user the link. Opening it asks them to sign in to Pontem, then shows the
+page with the greeting "Hello from Pontem".
+
+## Step 8: Change a config value
+
+Ask the user what the page should say instead of "Hello from Pontem".
+
+Record the current state:
+
+```bash
+pontem curl <app> /config.json
+```
+
+Set the new value for this device only. It overrides the namespace default without
+changing it for other devices:
+
+```bash
+pontem config override set GREETING="<their text>" --namespace quickstart --scope device:<device-name> --yes
+```
+
+The device picks the change up on its next check-in, about every 30 seconds, and
+restarts the service with the new value. Poll `pontem curl <app> /config.json` every
+10 seconds until `started_at` changes, for up to 3 minutes. If it hasn't changed by
+then, run `pontem device package redeploy quickstart --name <device-name> --yes` and
+poll again.
+
+Show the user what changed, as a small before and after table of `greeting` and
+`started_at`. Then explain in two or three sentences:
+
+- The namespace default is still "Hello from Pontem". The override applies to this
+  device only.
+- The daemon on the device restarted the service with the new value. Nobody
+  published a new package version.
+- Reloading the browser link shows the new greeting.
+
+## Wrap up
+
+Tell the user what they now have, in one short list: the enrolled device, the
+`quickstart` package and version, the `quickstart` config namespace and their
+device override, and the app link. Point them at `./pontem-quickstart/` for the
+files.
+
+Offer these next steps without running them:
+
+- Revert the greeting:
+  `pontem config override delete --namespace quickstart --scope device:<device-name> --key GREETING`
+- Remove the quickstart from the device:
+  `pontem app remove <app>` and `pontem device package remove quickstart --name <device-name>`

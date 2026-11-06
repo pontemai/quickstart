@@ -1,0 +1,13 @@
+{
+  "name": "pontem",
+  "owner": {
+    "name": "Pontem AI"
+  },
+  "plugins": [
+    {
+      "name": "pontem",
+      "source": "./plugin",
+      "description": "Get started with Pontem: enroll a device, deploy a package, and change its config"
+    }
+  ]
+}

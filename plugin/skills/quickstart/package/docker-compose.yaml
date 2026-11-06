@@ -1,0 +1,17 @@
+services:
+  web:
+    image: ghcr.io/pontemai/quickstart:0.1.0
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT}:8080"
+    environment:
+      GREETING: "${GREETING}"
+      PONTEM_TENANT_ID: "${PONTEM_TENANT_ID}"
+      PONTEM_DEVICE_ID: "${PONTEM_DEVICE_ID}"
+      PONTEM_PACKAGE_VERSION: "${PONTEM_PACKAGE_VERSION}"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
