@@ -196,40 +196,86 @@
   }
 
   // ── Device panel ───────────────────────────────────────
-  const ARCH = { aarch64: 'ARM64', x86_64: 'x86-64' };
-  function gb(bytes) { return (bytes / 1024 ** 3).toFixed(1); }
+  // device.json is this device as the Pontem API reports it: top-level fields
+  // plus the heartbeat's system, resources, gpu and link sections. Fields vary
+  // by hardware (a VM has no temperature, a Pi reports no distro), so every
+  // cell falls back to a dash.
+  const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '');
+  const gb = (mb) => (mb / 1024).toFixed(1);
+  const UPLINK = { wifi: 'Wi-Fi', ethernet: 'Ethernet', cellular: 'Cellular' };
+  const rate = (bps) => (bps >= 1e6 ? (bps / 1e6).toFixed(1) + ' MB/s' : Math.round(bps / 1e3) + ' KB/s');
+  function ago(iso) {
+    const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));
+    return s < 90 ? s + 's ago' : s < 5400 ? Math.round(s / 60) + 'm ago' : Math.round(s / 3600) + 'h ago';
+  }
   function uptime(s) {
     const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
     return d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m + 'm';
   }
-  function renderSpec(info) {
-    const rows = [
-      ['Host', info.hostname, true],
-      ['OS', info.os || 'Linux ' + info.kernel, true],
-      ['CPU', info.cpu || ARCH[info.arch] || info.arch, true],
-      ['Memory', info.mem_total ? gb(info.mem_total - info.mem_available) + ' / ' + gb(info.mem_total) + ' GB' : null, true],
-      ['Cores', info.cores],
-      ['Load', info.load1 != null ? info.load1.toFixed(2) : null],
-      ['Uptime', info.uptime_s != null ? uptime(info.uptime_s) : null],
-      ['Temp', info.temp_c != null ? info.temp_c + ' °C' : null],
+  function osName(sys) {
+    const fw = sys.firmware || {};
+    if (sys.distro && sys.distro.pretty_name) {
+      return sys.distro.pretty_name + (fw.jetpack_version ? ' · JetPack ' + fw.jetpack_version : '');
+    }
+    if (sys.os === 'darwin' && fw.version) return 'macOS ' + fw.version;
+    const kernel = (sys.kernel || '').split(':').pop();
+    return kernel ? cap(sys.os || 'linux') + ' ' + kernel : null;
+  }
+  // [label, value, wide, tooltip]
+  function deviceRows(d) {
+    const sys = d.system, res = d.resources, gpu = d.gpu, link = d.link;
+    const hw = sys.hardware || {};
+    return [
+      ['Device', d.name, true],
+      ['Hardware', hw.alias || hw.model, true, hw.model],
+      ['OS', osName(sys), true],
+      ['Status', [cap(d.runtime_status), (d.sync_status || '').replace(/_/g, ' ')].filter(Boolean).join(' · ')],
+      ['Uptime', sys.uptime_sec != null ? uptime(sys.uptime_sec) : null],
+      ['Load', res.num_cpus ? (res.cpu_load || 0).toFixed(2) + ' · ' + res.num_cpus + ' cores' : null, false, (hw.cpu && hw.cpu.model) || hw.soc],
+      ['Memory', res.total_memory_mb ? gb(res.memory_used_mb) + ' / ' + gb(res.total_memory_mb) + ' GB' : null],
+      ['Disk', res.total_disk_gb ? Math.round(res.disk_used_gb) + ' / ' + Math.round(res.total_disk_gb) + ' GB' : null],
+      res.cpu_temp_c != null ? ['Temp', res.cpu_temp_c.toFixed(1) + ' °C'] : ['Thermal', cap(res.thermal_pressure) || null],
+      ['GPU', gpu.model ? gpu.model + (gpu.cuda_version ? ' · CUDA ' + gpu.cuda_version : '') : null, true],
+      ['Network', link.uplink_kind ? (UPLINK[link.uplink_kind] || cap(link.uplink_kind)) + ' · ↓ ' + rate(link.rx_bytes_per_sec || 0) + ' ↑ ' + rate(link.tx_bytes_per_sec || 0) : null, true],
     ];
+  }
+  function renderDevice(result) {
     const spec = $('spec');
-    spec.replaceChildren(...rows.map(([name, value, wide]) => {
+    const error = $('spec-error');
+    const age = $('spec-age');
+    spec.hidden = !result.ok;
+    error.hidden = result.ok;
+    if (!result.ok) {
+      error.textContent = result.error;
+      age.textContent = '';
+      return;
+    }
+    const d = result.device;
+    spec.replaceChildren(...deviceRows(d).map(([name, value, wide, tooltip]) => {
       const cell = document.createElement('div');
       if (wide) cell.className = 'wide';
       const dt = document.createElement('dt');
       dt.textContent = name;
       const dd = document.createElement('dd');
       dd.textContent = value == null || value === '' ? '—' : String(value);
-      dd.title = dd.textContent;
+      dd.title = tooltip || dd.textContent;
       cell.append(dt, dd);
       return cell;
     }));
-    hostLabel.textContent = info.hostname;
-    $('lead-host').textContent = info.hostname;
+    age.textContent = result.stale ? 'Stale' : d.last_heartbeat_at ? 'Heartbeat ' + ago(d.last_heartbeat_at) : '';
+    age.title = result.stale ? result.error : '';
+    age.classList.toggle('stale', Boolean(result.stale));
+    if (d.name) {
+      hostLabel.textContent = d.name;
+      $('lead-host').textContent = d.name;
+    }
+    if (d.daemon_version) {
+      $('foot-daemon').querySelector('b').textContent = d.daemon_version;
+      $('foot-daemon').hidden = false;
+    }
   }
   async function pollDevice() {
-    try { renderSpec(await fetchJSON('device.json')); } catch (err) { /* keep the last reading */ }
+    try { renderDevice(await fetchJSON('device.json')); } catch (err) { /* keep the last reading */ }
   }
 
   // ── Try it ─────────────────────────────────────────────

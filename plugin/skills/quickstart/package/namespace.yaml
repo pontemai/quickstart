@@ -8,7 +8,13 @@ keys:
   ADMIN_URL:
     type: string
     default: ""
-    description: Admin app URL for this organization, e.g. https://pontem.acme.com/admin/o/acme. Powers the page's View in Pontem link.
+    description: Admin app URL for this organization, e.g. https://pontem.acme.com/admin/o/acme. The page links to the device there and calls the Pontem API on the same host.
+  API_KEY:
+    type: secret
+    default:
+      secret_id: quickstart-api-key
+      version: 1
+    description: Service-account key with devices:read, used by the page to read this device from the Pontem API
   HOST_PORT:
     type: integer
     default: 8080

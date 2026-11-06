@@ -5,30 +5,35 @@ projects it into the container's environment and restarts the stack when the
 value changes. Each process start gets a fresh `boot_id`, so the page (and the
 quickstart skill) can tell a restart happened and show the new value landing.
 
-The device panel reads the host's /proc, which containers share. The compose
-file adds `uts: host` for the real hostname and mounts /etc/os-release for the
-OS name; without them those fields fall back to the container's own.
+The device panel shows this device as Pontem sees it. ADMIN_URL, the
+organization's admin URL (e.g. https://pontem.acme.com/admin/o/acme), names the
+control plane, and API_KEY is a service-account key with devices:read that
+arrives through a secret-backed namespace key. The server calls the device
+endpoint itself and hands the page only the fields the panel shows, so the key
+never leaves the container.
 
 Routes:
   /             the page
   /static/...   its CSS, JS and icon
   /config.json  greeting and process identity, polled by the page and `pontem curl`
-  /device.json  live host stats for the device panel
+  /device.json  this device from the Pontem API, for the device panel
   /health       compose healthcheck
 """
 
-import glob
 import html
 import json
 import os
-import platform
 import signal
-import socket
 import sys
+import threading
+import time
+import urllib.error
+import urllib.request
 import uuid
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlsplit
 
 # init() requires a device ID. On a managed device the daemon injects one;
 # the fallback keeps `docker run` working for local smoke tests.
@@ -47,14 +52,8 @@ STATIC_TYPES = {
 STATIC = {name: (STATIC_DIR / name).read_bytes() for name in STATIC_TYPES}
 INDEX = (STATIC_DIR / "index.html").read_text()
 
-
-def device_page_url(admin_url: str, device_id: str) -> str:
-    # ADMIN_URL is the organization's admin base, e.g.
-    # https://pontem.acme.com/admin/o/acme. Only http(s) values become a link.
-    if not admin_url.startswith(("https://", "http://")):
-        return ""
-    return f"{admin_url.rstrip('/')}/devices/{device_id}"
-
+ADMIN_URL = os.environ.get("ADMIN_URL", "")
+ADMIN_URL_OK = ADMIN_URL.startswith(("https://", "http://"))
 
 STATE = {
     "greeting": os.environ.get("GREETING", "Hello World!"),
@@ -62,77 +61,98 @@ STATE = {
     "package_version": os.environ.get("PONTEM_PACKAGE_VERSION", ""),
     "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     "boot_id": uuid.uuid4().hex[:12],
+    "device_url": f"{ADMIN_URL.rstrip('/')}/devices/{os.environ['PONTEM_DEVICE_ID']}"
+    if ADMIN_URL_OK
+    else "",
 }
-STATE["device_url"] = device_page_url(os.environ.get("ADMIN_URL", ""), STATE["device_id"])
 
 pontem.init(service_name="quickstart")
 log = pontem.logger
 metrics = pontem.metrics
 
 
-def read(path: str) -> str | None:
-    try:
-        return Path(path).read_text()
-    except OSError:
-        return None
+class DeviceSource:
+    """This device from the Pontem API, fetched at most every CACHE_SECONDS.
+
+    Devices heartbeat about every 30 seconds, so polling faster gains nothing.
+    `get()` always returns a dict for the page: `ok` with the device, or `ok:
+    false` with an error the page shows. After a failed fetch the last good
+    reading is kept and marked stale.
+    """
+
+    CACHE_SECONDS = 10
+    TIMEOUT_SECONDS = 5
+    HEARTBEAT_SECTIONS = ("system", "resources", "gpu", "link")
+
+    def __init__(self, admin_url: str, api_key: str, tenant_id: str, device_id: str):
+        self._missing = (
+            "ADMIN_URL isn't set, so the page doesn't know which Pontem to ask."
+            if not ADMIN_URL_OK
+            else "API_KEY isn't set, so the page can't call the Pontem API."
+            if not api_key
+            else "PONTEM_TENANT_ID isn't set."
+            if not tenant_id
+            else None
+        )
+        parts = urlsplit(admin_url)
+        self._url = f"{parts.scheme}://{parts.netloc}/tenant-api/devices/{device_id}"
+        self._headers = {"X-API-Key": api_key, "X-Tenant-Id": tenant_id, "Accept": "application/json"}
+        self._lock = threading.Lock()
+        self._result: dict = {}
+        self._fetched_at = 0.0
+        self._last_good: dict | None = None
+
+    def get(self) -> dict:
+        if self._missing:
+            return {"ok": False, "error": self._missing}
+        with self._lock:
+            if time.monotonic() - self._fetched_at >= self.CACHE_SECONDS:
+                self._result = self._fetch()
+                self._fetched_at = time.monotonic()
+            return self._result
+
+    def _fetch(self) -> dict:
+        request = urllib.request.Request(self._url, headers=self._headers)
+        try:
+            with urllib.request.urlopen(request, timeout=self.TIMEOUT_SECONDS) as resp:
+                device = json.load(resp)
+        except urllib.error.HTTPError as err:
+            error = (
+                f"The Pontem API refused the key (HTTP {err.code}). It needs devices:read."
+                if err.code in (401, 403)
+                else f"The Pontem API returned HTTP {err.code}."
+            )
+        except (urllib.error.URLError, OSError) as err:
+            error = f"Can't reach the Pontem API: {getattr(err, 'reason', err)}"
+        except ValueError:
+            error = "The Pontem API returned a response that isn't JSON."
+        else:
+            self._last_good = self._project(device)
+            return {"ok": True, "device": self._last_good}
+        log.warn("device fetch failed", error=error)
+        if self._last_good:
+            return {"ok": True, "stale": True, "error": error, "device": self._last_good}
+        return {"ok": False, "error": error}
+
+    def _project(self, device: dict) -> dict:
+        heartbeat = device.get("last_heartbeat") or {}
+        return {
+            "name": device.get("name"),
+            "runtime_status": device.get("runtime_status"),
+            "sync_status": device.get("sync_status"),
+            "labels": device.get("labels") or {},
+            "last_heartbeat_at": device.get("last_heartbeat_at"),
+            "daemon_version": (heartbeat.get("daemon") or {}).get("version"),
+            **{key: heartbeat.get(key) or {} for key in self.HEARTBEAT_SECTIONS},
+        }
 
 
-def os_name() -> str | None:
-    text = read("/host/etc/os-release") or ""
-    for line in text.splitlines():
-        if line.startswith("PRETTY_NAME="):
-            return line.split("=", 1)[1].strip().strip('"')
-    return None
-
-
-def cpu_model() -> str | None:
-    # x86 reports "model name"; Raspberry Pi reports the board as "Model".
-    found = None
-    for line in (read("/proc/cpuinfo") or "").splitlines():
-        key, _, value = line.partition(":")
-        key = key.strip().lower()
-        if key == "model" and not value.strip().isdigit():
-            return value.strip()
-        if key == "model name" and found is None:
-            found = value.strip()
-    return found
-
-
-def meminfo() -> dict[str, int]:
-    fields = {}
-    for line in (read("/proc/meminfo") or "").splitlines():
-        key, _, value = line.partition(":")
-        if key in ("MemTotal", "MemAvailable"):
-            fields[key] = int(value.split()[0]) * 1024
-    return fields
-
-
-def temperature_c() -> float | None:
-    temps = []
-    for zone in glob.glob("/sys/class/thermal/thermal_zone*/temp"):
-        raw = read(zone)
-        if raw and raw.strip().lstrip("-").isdigit():
-            temps.append(int(raw) / 1000)
-    return round(max(temps), 1) if temps else None
-
-
-def device_stats() -> dict:
-    mem = meminfo()
-    load = (read("/proc/loadavg") or "").split()
-    uptime = (read("/proc/uptime") or "").split()
-    return {
-        "hostname": socket.gethostname(),
-        "os": os_name(),
-        "arch": platform.machine(),
-        "kernel": platform.release(),
-        "cpu": cpu_model(),
-        "cores": os.cpu_count(),
-        "mem_total": mem.get("MemTotal"),
-        "mem_available": mem.get("MemAvailable"),
-        "load1": float(load[0]) if load else None,
-        "uptime_s": int(float(uptime[0])) if uptime else None,
-        "temp_c": temperature_c(),
-    }
+DEVICE = DeviceSource(
+    ADMIN_URL,
+    os.environ.get("API_KEY", ""),
+    os.environ.get("PONTEM_TENANT_ID", ""),
+    STATE["device_id"],
+)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -145,7 +165,7 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/config.json":
                 self._json(STATE)
             elif path == "/device.json":
-                self._json(device_stats())
+                self._json(DEVICE.get())
             elif path.startswith("/static/") and path[8:] in STATIC:
                 name = path[8:]
                 self._send(200, STATIC_TYPES[name], STATIC[name])

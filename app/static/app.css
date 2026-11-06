@@ -181,7 +181,7 @@ body[data-state="lost"] .status-dot { animation: none; }
   color: var(--fg-subtle); white-space: nowrap;
 }
 .fig-tag b { font-weight: 500; padding: 3px 7px; color: var(--fg-muted); border: 1px solid var(--line-strong); }
-#scene { display: block; width: 100%; height: clamp(200px, 44vh, 420px); overflow: visible; }
+#scene { display: block; width: 100%; height: clamp(180px, 36vh, 380px); overflow: visible; }
 
 .f { stroke-width: 0.75; stroke-linejoin: round; transition: fill 800ms var(--ease-out); }
 .s { fill: none; stroke-linecap: round; transition: stroke 800ms var(--ease-out); }
@@ -223,7 +223,22 @@ body[data-state="success"] .plate { stroke: var(--success); }
 .antenna-tip { fill: var(--fg-subtle); }
 body[data-state="live"] .antenna-tip { fill: var(--accent); animation: pontem-pulse 2s infinite var(--ease-in-out); }
 
-/* Spec sheet under the drawing */
+/* Spec sheet under the drawing: this device as the Pontem API reports it */
+.spec-head {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding-bottom: 8px;
+  font: var(--mono-label); letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--accent);
+}
+#spec-age { color: var(--fg-subtle); }
+#spec-age.stale { color: var(--tone-warning-accent); }
+.spec-error {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--tone-warning-accent) 45%, transparent);
+  font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5;
+  color: var(--tone-warning-accent);
+}
+
 .spec {
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
   border-top: 1px solid var(--line); border-left: 1px solid var(--line);
@@ -239,6 +254,7 @@ body[data-state="live"] .antenna-tip { fill: var(--accent); animation: pontem-pu
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .spec .wide { grid-column: span 2; }
+.spec[hidden] { display: none; }
 
 /* ── Footer ──────────────────────────── */
 .foot {

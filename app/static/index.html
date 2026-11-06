@@ -62,7 +62,11 @@
   <section class="fig" aria-label="Your device">
     <div class="fig-tag"><b>Fig. 1</b><span>Pontem → your device</span></div>
     <svg id="scene" role="img" aria-label="Pontem control plane connected to your device"></svg>
-    <dl class="spec" id="spec"></dl>
+    <div class="spec-wrap">
+      <div class="spec-head"><span>From the Pontem API</span><span id="spec-age"></span></div>
+      <dl class="spec" id="spec"></dl>
+      <p class="spec-error" id="spec-error" hidden></p>
+    </div>
   </section>
 </main>
 
@@ -70,6 +74,7 @@
   <span>Device <b id="foot-device"></b></span>
   <span>Package <b id="foot-package"></b></span>
   <span>Started <b id="foot-started"></b></span>
+  <span id="foot-daemon" hidden>Daemon <b></b></span>
   <span id="foot-viewer" hidden>Signed in as <b></b></span>
 </footer>
 

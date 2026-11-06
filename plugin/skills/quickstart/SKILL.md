@@ -128,23 +128,49 @@ Move on once it shows a recent report from the device.
 Copy this skill's `package/` directory to `./pontem-quickstart/` in the user's
 working directory, so they keep the files. Run the rest of this step from there.
 
-1. In `namespace.yaml`, set the `ADMIN_URL` default to
+1. Give the page read access to Pontem. The page shows its own device as the
+   Pontem API reports it, using a service-account key that can only read
+   devices. The key goes straight into a tenant secret and is never printed.
+
+   Skip this if `pontem secrets list` already shows `quickstart-api-key`. In that
+   case, use its `LATEST` version number in sub-step 2 instead of `1`.
+
+   Reuse the `sa_quickstart` service account if `pontem service-account list`
+   shows one. Otherwise create it; it prints the new ID (`sa_…`):
+
+   ```bash
+   pontem service-account create --name sa_quickstart \
+     --description "Reads device details for the quickstart page" \
+     --initial-scopes devices:read
+   ```
+
+   Issue a 30-day key and store it as the secret in one pipe. `key create` writes
+   the key only to stdout, so it never appears in the output:
+
+   ```bash
+   pontem service-account key create --sa <sa-id> --name quickstart-page --expires 30d \
+     | tr -d '\n' | pontem secrets create quickstart-api-key --from-file -
+   ```
+
+2. In `namespace.yaml`, set the `ADMIN_URL` default to
    `https://<control-plane>/admin/o/<tenant>`, the organization's admin URL from
-   the inputs. The page's **View in Pontem** link opens the device there. Then
-   create or update the namespace. Re-running is safe.
+   the inputs. The page links to the device there and calls the Pontem API on
+   the same host. If the secret's version isn't `1`, set `API_KEY`'s
+   `default.version` to match. Then create or update the namespace. Re-running is
+   safe.
 
    ```bash
    pontem config namespace set -f namespace.yaml
    ```
 
-2. Create the package if it doesn't exist:
+3. Create the package if it doesn't exist:
 
    ```bash
    pontem package list
    pontem package create -f package.yaml
    ```
 
-3. Publish version `v0.1.0` if it isn't published yet:
+4. Publish version `v0.1.0` if it isn't published yet:
 
    ```bash
    pontem package version list quickstart
@@ -196,7 +222,12 @@ pontem app url <app>
 ```
 
 Give the user the link. Opening it asks them to sign in to Pontem, then shows the
-page with the greeting "Hello World!" and a panel describing their device.
+page with the greeting "Hello World!" and a panel of their device's details from
+the Pontem API.
+
+If the panel shows an error instead, the message says why. The usual one is "The
+Pontem API refused the key": check that `sa_quickstart` has `devices:read` with
+`pontem service-account describe <sa-id>`.
 
 ## Step 8: Change a config value
 
@@ -239,7 +270,8 @@ Show the user what changed, as a small before and after table of `greeting` and
 
 Tell the user what they now have, in one short list: the enrolled device, the
 `quickstart` package and version, the `quickstart` config namespace and their
-device override, and the app link. Point them at `./pontem-quickstart/` for the
+device override, the `sa_quickstart` service account and its 30-day key, and the
+app link. Point them at `./pontem-quickstart/` for the
 files.
 
 Offer these next steps without running them:
@@ -248,3 +280,9 @@ Offer these next steps without running them:
   `pontem config override delete --namespace quickstart --scope device:<device-name> --key GREETING`
 - Remove the quickstart from the device:
   `pontem app remove <app>` and `pontem device package remove quickstart --name <device-name>`
+- Revoke the page's key: find its ID with `pontem service-account key list --sa <sa-id>`,
+  then `pontem service-account key revoke <key-id> --sa <sa-id>`. The page's
+  device panel stops working; the rest of the page keeps running.
+- Renew the key before it expires in 30 days: issue a new one and publish it as
+  a new version of the secret, then point `API_KEY` at that version.
+  `pontem service-account key create --sa <sa-id> --name quickstart-page --expires 30d | tr -d '\n' | pontem secrets publish quickstart-api-key --from-file -`
