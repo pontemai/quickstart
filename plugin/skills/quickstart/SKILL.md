@@ -132,8 +132,8 @@ working directory, so they keep the files. Run the rest of this step from there.
    Pontem API reports it, using a service-account key that can only read
    devices. The key goes straight into a tenant secret and is never printed.
 
-   Before creating the key, tell the user in one line that it can read, but not
-   change, every device in the tenant.
+   Before creating the key, tell the user in one line that it's read-only: it can
+   see devices in the tenant but can't change anything.
 
    Skip this if `pontem secrets list` already shows `quickstart-api-key`. In that
    case, use its `LATEST` version number in sub-step 2 instead of `1`.
