@@ -175,7 +175,7 @@ working directory, so they keep the files. Run the rest of this step from there.
    pontem package create -f package.yaml
    ```
 
-4. Publish version `v0.2.1` if it isn't published yet:
+4. Publish version `v0.2.3` if it isn't published yet:
 
    ```bash
    pontem package version list quickstart
@@ -274,8 +274,10 @@ Show the user what changed, as a small before and after table of `greeting` and
   device only.
 - The daemon on the device restarted the service with the new value. Nobody
   published a new package version.
-- The open page showed the service going down and coming back with the new
-  greeting. Its activity log lists both.
+- The open page followed the change: Pontem marked it pending as soon as it was
+  saved, the device picked it up at its next check-in and restarted the service,
+  and Pontem confirmed it in sync at the check-in after. Its activity log lists
+  each step.
 
 ## Wrap up
 

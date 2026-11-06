@@ -60,6 +60,7 @@ body {
   width: 6px; height: 6px; border-radius: 50%; background: currentColor;
   animation: pontem-pulse 2s infinite var(--ease-in-out);
 }
+body[data-state="pending"] .status { color: var(--accent); }
 body[data-state="applying"] .status { color: var(--tone-warning-accent); }
 body[data-state="lost"] .status { color: var(--fg-subtle); }
 body[data-state="lost"] .status-dot { animation: none; }
@@ -136,7 +137,7 @@ body[data-state="lost"] .status-dot { animation: none; }
 }
 .log {
   list-style: none;
-  height: calc(22px * 4 + 20px); padding: 10px 14px; overflow: hidden;
+  height: calc(22px * 5 + 20px); padding: 10px 14px; overflow: hidden;
   display: flex; flex-direction: column; justify-content: flex-end;
   font-size: 12.5px; line-height: 22px; color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
@@ -199,6 +200,8 @@ body[data-state="lost"] .status-dot { animation: none; }
   fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round;
   stroke-dasharray: 0.06 1; stroke-dashoffset: 0.06; opacity: 0;
 }
+/* Pending: the change waits in Pontem for the next check-in. Applying: it's landing. */
+body[data-state="pending"] .packet { opacity: 1; animation: packet 2400ms linear infinite; }
 body[data-state="applying"] .packet { opacity: 1; animation: packet 1600ms linear infinite; }
 @keyframes packet { to { stroke-dashoffset: -1; } }
 
@@ -206,10 +209,14 @@ body[data-state="applying"] .packet { opacity: 1; animation: packet 1600ms linea
 .dev .f-l { fill: var(--fig-off-l); stroke: var(--line); }
 .dev .f-r { fill: var(--fig-off-r); stroke: var(--line); }
 .dev .s { stroke: var(--line-strong); }
-body[data-state="live"] .dev .f-t { fill: var(--fig-live-t); stroke: var(--bg); }
-body[data-state="live"] .dev .f-l { fill: var(--fig-live-l); stroke: var(--bg); }
-body[data-state="live"] .dev .f-r { fill: var(--fig-live-r); stroke: var(--bg); }
-body[data-state="live"] .dev .s { stroke: var(--fig-live-t); }
+body[data-state="live"] .dev .f-t,
+body[data-state="pending"] .dev .f-t { fill: var(--fig-live-t); stroke: var(--bg); }
+body[data-state="live"] .dev .f-l,
+body[data-state="pending"] .dev .f-l { fill: var(--fig-live-l); stroke: var(--bg); }
+body[data-state="live"] .dev .f-r,
+body[data-state="pending"] .dev .f-r { fill: var(--fig-live-r); stroke: var(--bg); }
+body[data-state="live"] .dev .s,
+body[data-state="pending"] .dev .s { stroke: var(--fig-live-t); }
 body[data-state="applying"] .dev .f-t { fill: var(--warning); stroke: var(--bg); }
 body[data-state="applying"] .dev .f-l { fill: var(--fig-rolling-l); stroke: var(--bg); }
 body[data-state="applying"] .dev .f-r { fill: var(--fig-rolling-r); stroke: var(--bg); }
@@ -221,7 +228,8 @@ body[data-state="success"] .dev .f-r { fill: var(--fig-success-r); stroke: var(-
 body[data-state="success"] .dev .s { stroke: var(--success); }
 body[data-state="success"] .plate { stroke: var(--success); }
 .antenna-tip { fill: var(--fg-subtle); }
-body[data-state="live"] .antenna-tip { fill: var(--accent); animation: pontem-pulse 2s infinite var(--ease-in-out); }
+body[data-state="live"] .antenna-tip,
+body[data-state="pending"] .antenna-tip { fill: var(--accent); animation: pontem-pulse 2s infinite var(--ease-in-out); }
 
 /* Spec sheet under the drawing: this device as the Pontem API reports it */
 .spec-head {
