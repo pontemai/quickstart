@@ -173,7 +173,7 @@ working directory, so they keep the files. Run the rest of this step from there.
    pontem package create -f package.yaml
    ```
 
-4. Publish version `v0.2.0` if it isn't published yet:
+4. Publish version `v0.2.1` if it isn't published yet:
 
    ```bash
    pontem package version list quickstart
@@ -224,7 +224,10 @@ Keep the app ID from the output and use it as `<app>` from here on. Print the li
 pontem app url <app>
 ```
 
-Give the user the link. Opening it asks them to sign in to Pontem, then shows the
+A new link takes about 20 seconds to come online. Until it does, `pontem curl <app> /health`
+fails with HTTP 503 "API route offline". Retry it every 5 seconds, for up to 2 minutes.
+
+Once it answers `ok`, give the user the link. Opening it asks them to sign in to Pontem, then shows the
 page with the greeting "Hello World!" and a panel of their device's details from
 the Pontem API.
 
@@ -255,7 +258,8 @@ a single quote inside it as `'\''`.
 
 The device picks the change up on its next check-in, about every 30 seconds, and
 restarts the service with the new value. Poll `pontem curl <app> /config.json` every
-10 seconds until `boot_id` changes, for up to 3 minutes. If it hasn't changed by
+10 seconds until `boot_id` changes, for up to 3 minutes. Requests fail for a few
+seconds while the service restarts; keep polling. If it hasn't changed by
 then, run `pontem device package redeploy quickstart --name <device-name> --yes` and
 poll again.
 
