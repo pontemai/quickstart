@@ -170,7 +170,7 @@ working directory, so they keep the files. Run the rest of this step from there.
    pontem package create -f package.yaml
    ```
 
-4. Publish version `v0.1.0` if it isn't published yet:
+4. Publish version `v0.2.0` if it isn't published yet:
 
    ```bash
    pontem package version list quickstart
