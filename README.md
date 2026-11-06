@@ -42,3 +42,7 @@ Claude asks for your admin app URL and the device to use.
 Push a tag `v<version>` to build `ghcr.io/pontemai/quickstart:<version>` for
 amd64 and arm64. Update the image tag in `plugin/skills/quickstart/package/docker-compose.yaml`
 and the version in `version.yaml` to match.
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).

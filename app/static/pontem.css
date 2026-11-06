@@ -1,0 +1,518 @@
+/* ============================================================
+   PONTEM DESIGN SYSTEM — Colors & Type
+   ============================================================
+   Light, dark and paper modes via [data-theme], with the same
+   semantic names (--bg, --fg, --line, …) in each.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Serif:wght@400;500;600;700&display=swap');
+
+/* =========================================================
+   1. PALETTE — raw values. Don't reference these in product
+   code; reference semantic tokens below. Listed here so
+   designers can audit & extend the system in one place.
+   ========================================================= */
+:root {
+  /* Bridge — the logo gradient. Brand's only saturated surface. */
+  --pontem-navy:  #2C4A6E;
+  --pontem-mid:   #3978A8;
+  --pontem-cyan:  #4DA9D9;
+  --gradient-bridge:      linear-gradient(135deg, #1A2D44 0%, #2C4A6E 55%, #3D7AAB 100%);
+  --gradient-bridge-soft: linear-gradient(135deg, #1A2D44 0%, #3D7AAB 100%);
+  --gradient-night:       linear-gradient(160deg, #0B0E12 0%, #14253B 60%, #233E5C 100%);
+
+  /* Slate (neutral) — same scale across modes; semantic layer flips. */
+  --slate-50:   #F6F7F9;
+  --slate-100:  #EDEFF2;
+  --slate-150:  #E3E7ED;
+  --slate-200:  #DCE0E5;
+  --slate-300:  #ABB3BF;
+  --slate-400:  #8F99A8;
+  --slate-500:  #5F6B7C;
+  --slate-600:  #4A5568;
+  --slate-700:  #2F3B52;
+  --slate-800:  #1F2937;
+  --slate-850:  #1C2127;
+  --slate-900:  #111418;
+  --slate-950:  #0B0E12;
+
+  /* Bridge blue scale — for accents, links, on-brand surfaces. */
+  --brand-50:   #EAF4FB;
+  --brand-100:  #CFE5F4;
+  --brand-200:  #9FCBE9;
+  --brand-300:  #6FB1DD;
+  --brand-400:  #4DA9D9;   /* logo cyan — primary accent */
+  --brand-500:  #3978A8;
+  --brand-600:  #2C4A6E;   /* logo navy */
+  --brand-700:  #1F3653;
+  --brand-800:  #14253B;
+  --brand-900:  #0B1726;
+
+  /* Status (mode-agnostic) */
+  --success:  #10B981;  --success-soft:  #ECFDF5;  --success-strong: #047857;
+  --warning:  #F59E0B;  --warning-soft:  #FFFBEB;  --warning-strong: #B45309;
+  --error:    #EF4444;  --error-soft:    #FEF2F2;  --error-strong:   #B91C1C;
+  --info:     #3B82F6;  --info-soft:     #EFF6FF;  --info-strong:    #1D4ED8;
+
+  /* ── Type ── */
+  --font-sans:    'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'IBM Plex Sans', -apple-system, sans-serif;
+  --font-mono:    'IBM Plex Mono', ui-monospace, SFMono-Regular, 'JetBrains Mono', monospace;
+  --font-serif:   'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+
+  /* Scale — fluid up to deck-display. Use semantic .h1/.lead etc. */
+  --text-xs: 11px; --text-sm: 12px; --text-base: 14px; --text-md: 15px;
+  --text-lg: 16px; --text-xl: 18px; --text-2xl: 20px; --text-3xl: 24px;
+  --text-4xl: 32px; --text-5xl: 44px; --text-6xl: 64px;
+  --text-display: 88px; --text-display-xl: 128px;
+
+  /* Tracking */
+  --track-display: -0.035em;
+  --track-tight:   -0.02em;
+  --track-normal:  0em;
+  --track-eyebrow: 0.18em;     /* mono uppercase eyebrow */
+  --track-kicker:  0.22em;     /* deck eyebrow, larger */
+  --track-stamp:   0.32em;     /* covers, footers */
+
+  /* Spacing — 4px grid */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --space-12: 48px; --space-16: 64px; --space-20: 80px; --space-24: 96px;
+
+  /* Radius */
+  --radius-sm: 6px; --radius: 8px; --radius-md: 10px;
+  --radius-lg: 12px; --radius-xl: 16px; --radius-2xl: 24px;
+  --radius-pill: 999px;
+
+  /* Texture grid cell — single source of truth for blueprint backgrounds */
+  --grid-cell:    24px;
+  --grid-cell-lg: 40px;
+
+  /* Motion */
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-1: 120ms; --duration-2: 200ms;
+  --duration-3: 300ms; --duration-4: 500ms;
+}
+
+/* =========================================================
+   2. SEMANTIC TOKENS — LIGHT MODE (default)
+   These are what product code should reference.
+   ========================================================= */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Surfaces */
+  --bg:           #FFFFFF;          /* canvas */
+  --bg-page:      #F6F7F9;          /* page behind cards */
+  --bg-elevated:  #FFFFFF;          /* card/popover */
+  --bg-sunken:    #EDEFF2;          /* well, code block */
+  --bg-hover:     #EDEFF2;
+  --bg-pressed:   #E3E7ED;
+  --bg-inverse:   #111418;          /* dark blocks inside light pages */
+
+  /* Foreground */
+  --fg:           #111418;          /* primary text */
+  --fg-muted:     #5F6B7C;          /* secondary */
+  --fg-subtle:    #8F99A8;          /* tertiary, metadata */
+  --fg-disabled:  #ABB3BF;
+  --fg-on-brand:  #FFFFFF;          /* text on brand-colored surfaces */
+  --fg-on-inverse:#FFFFFF;
+
+  /* Lines */
+  --line:         #DCE0E5;          /* default border */
+  --line-soft:    #EDEFF2;          /* hairline divider */
+  --line-strong:  #ABB3BF;          /* hover/focus border */
+  --line-focus:   #4A5568;
+
+  /* Accent */
+  --accent:           #2C4A6E;      /* primary action — navy from logo */
+  --accent-hover:     #1F3653;
+  --accent-fg:        #FFFFFF;
+  --accent-soft:      #EAF4FB;
+  --accent-soft-fg:   #1F3653;
+  --accent-bright:    #4DA9D9;      /* highlight, links on dark, halos */
+
+  /* Shadows — hairline-first on light */
+  --shadow-xs: 0 1px 2px rgba(17, 20, 24, 0.04);
+  --shadow-sm: 0 1px 3px rgba(17, 20, 24, 0.06), 0 1px 2px rgba(17, 20, 24, 0.04);
+  --shadow:    0 4px 12px rgba(17, 20, 24, 0.08);
+  --shadow-md: 0 8px 24px rgba(17, 20, 24, 0.10);
+  --shadow-lg: 0 16px 48px rgba(17, 20, 24, 0.14);
+  --shadow-glow: 0 0 24px rgba(77, 169, 217, 0.30);
+  --shadow-press: inset 0 1px 0 rgba(17, 20, 24, 0.04);
+
+  /* Texture parameters — paired with utility classes below */
+  --grid-dot-color:   rgba(74, 85, 104, 0.16);
+  --grid-line-color:  rgba(47, 59, 82, 0.07);
+  --halo-warm:        rgba(77, 169, 217, 0.18);
+  --halo-cool:        rgba(47, 59, 82, 0.10);
+  --scrim:            rgba(17, 20, 24, 0.45);
+
+  /* ── Component surface tokens (light) ──
+     Cool slate, aligned with --bg-page / --bg / --bg-sunken.
+     3-step elevation: page (canvas) → raised (paper) → sunken (recessed).
+     Header sits on sunken; body on raised. */
+  --surface-page:    #F6F7F9;
+  --surface-raised:  #FFFFFF;
+  --surface-sunken:  #EDEFF2;
+
+  --border-quiet:    rgba(17, 20, 24, 0.08);
+  --border-strong:   rgba(17, 20, 24, 0.45);
+
+  --text-primary:    #111418;
+  --text-secondary:  #4A5568;
+  --text-tertiary:   #8F99A8;
+
+  /* Tones — pale tint bg, deep stop fg, mid accent */
+  --tone-success-bg:     #E6F4EC;
+  --tone-success-fg:     #0F6B43;
+  --tone-success-accent: #10B981;
+  --tone-warning-bg:     #FBF1DC;
+  --tone-warning-fg:     #8A5A00;
+  --tone-warning-accent: #E59411;
+  --tone-danger-bg:      #FBE8E5;
+  --tone-danger-fg:      #9F1F19;
+  --tone-danger-accent:  #E04A3F;
+  --tone-info-bg:        #E8EFF7;
+  --tone-info-fg:        #1F3653;
+  --tone-info-accent:    #3978A8;
+  --tone-neutral-bg:     #EDEFF2;
+  --tone-neutral-fg:     #4A5568;
+  --tone-neutral-accent: #8F99A8;
+
+  --border-radius-md:    8px;
+  --border-radius-lg:    12px;
+}
+
+/* =========================================================
+   3. SEMANTIC TOKENS — DARK MODE
+   Apply via <html data-theme="dark"> or wrap any element in
+   [data-theme="dark"]. Components don't need to know — they
+   just reference --bg/--fg/--line/--accent and Just Work.
+   ========================================================= */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg:           #0B0E12;
+  --bg-page:      #0B0E12;
+  --bg-elevated:  #14181E;
+  --bg-sunken:    #1C2127;
+  --bg-hover:     #1C2127;
+  --bg-pressed:   #252A31;
+  --bg-inverse:   #FFFFFF;
+
+  --fg:           #F6F7F9;
+  --fg-muted:     #C4CAD4;
+  --fg-subtle:    #8F99A8;
+  --fg-disabled:  #5F6B7C;
+  --fg-on-brand:  #FFFFFF;
+  --fg-on-inverse:#111418;
+
+  --line:         #1C2127;
+  --line-soft:    #14181E;
+  --line-strong:  #2F3B52;
+  --line-focus:   #4DA9D9;
+
+  --accent:           #4DA9D9;       /* on dark, the cyan reads as primary */
+  --accent-hover:     #6FB1DD;
+  --accent-fg:        #0B0E12;
+  --accent-soft:      rgba(77, 169, 217, 0.12);
+  --accent-soft-fg:   #9FCBE9;
+  --accent-bright:    #9FCBE9;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.40);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow:    0 4px 16px rgba(0, 0, 0, 0.50);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.60);
+  --shadow-glow: 0 0 32px rgba(77, 169, 217, 0.45);
+  --shadow-press: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  --grid-dot-color:   rgba(255, 255, 255, 0.07);
+  --grid-line-color:  rgba(77, 169, 217, 0.10);
+  --halo-warm:        rgba(77, 169, 217, 0.22);
+  --halo-cool:        rgba(28, 33, 39, 0.6);
+  --scrim:            rgba(0, 0, 0, 0.65);
+
+  /* ── Table-component tokens (dark) ──
+     Same elevation logic, inverted: page (near-black) → raised → sunken. */
+  --surface-page:    #0B0E12;
+  --surface-raised:  #14181E;
+  --surface-sunken:  #1C2127;
+
+  --border-quiet:    rgba(255, 255, 255, 0.08);
+  --border-strong:   rgba(255, 255, 255, 0.55);
+
+  --text-primary:    #F6F7F9;
+  --text-secondary:  #C4CAD4;
+  --text-tertiary:   #8F99A8;
+
+  /* Tones — deep tint bg, pale stop fg, accent one stop lighter than light-mode */
+  --tone-success-bg:     rgba(16, 185, 129, 0.14);
+  --tone-success-fg:     #6FE1B5;
+  --tone-success-accent: #34D399;
+  --tone-warning-bg:     rgba(229, 148, 17, 0.16);
+  --tone-warning-fg:     #F2C26B;
+  --tone-warning-accent: #F4B142;
+  --tone-danger-bg:      rgba(224, 74, 63, 0.16);
+  --tone-danger-fg:      #F19A92;
+  --tone-danger-accent:  #EF6E63;
+  --tone-info-bg:        rgba(77, 169, 217, 0.14);
+  --tone-info-fg:        #9FCBE9;
+  --tone-info-accent:    #6FB1DD;
+  --tone-neutral-bg:     #1C2127;
+  --tone-neutral-fg:     #C4CAD4;
+  --tone-neutral-accent: #8F99A8;
+}
+
+/* =========================================================
+   3b. SEMANTIC TOKENS — PAPER MODE
+   A warm off-white printed look, and the pair to dark ("ink").
+   The logo cyan is too pale to read on paper, so the accent
+   and the status tones are the deeper stops of each hue.
+   ========================================================= */
+[data-theme="paper"] {
+  color-scheme: light;
+
+  --bg:           #EFECE5;
+  --bg-page:      #EFECE5;
+  --bg-elevated:  #F6F3EC;
+  --bg-sunken:    #E7E3DA;
+  --bg-hover:     #E7E3DA;
+  --bg-pressed:   #DDD8CC;
+  --bg-inverse:   #15140F;
+
+  --fg:           #15140F;
+  --fg-muted:     #4A483F;
+  --fg-subtle:    #6A675A;
+  --fg-disabled:  #8B8775;
+  --fg-on-brand:  #FFFFFF;
+  --fg-on-inverse:#EFECE5;
+
+  --line:         #DAD5C8;
+  --line-soft:    #E2DED4;
+  --line-strong:  #BDB7A6;
+  --line-focus:   #1B6796;
+
+  --accent:           #1B6796;
+  --accent-hover:     #14527A;
+  --accent-fg:        #FFFFFF;
+  --accent-soft:      rgba(27, 103, 150, 0.10);
+  --accent-soft-fg:   #14527A;
+  --accent-bright:    #1B6796;
+
+  --shadow-xs: 0 1px 2px rgba(21, 20, 15, 0.05);
+  --shadow-sm: 0 1px 3px rgba(21, 20, 15, 0.07), 0 1px 2px rgba(21, 20, 15, 0.05);
+  --shadow:    0 4px 12px rgba(21, 20, 15, 0.09);
+  --shadow-md: 0 8px 24px rgba(21, 20, 15, 0.11);
+  --shadow-lg: 0 16px 48px rgba(21, 20, 15, 0.15);
+  --shadow-glow: 0 0 24px rgba(27, 103, 150, 0.25);
+  --shadow-press: inset 0 1px 0 rgba(21, 20, 15, 0.05);
+
+  --grid-dot-color:   rgba(21, 20, 15, 0.14);
+  --grid-line-color:  rgba(21, 20, 15, 0.06);
+  --halo-warm:        rgba(27, 103, 150, 0.12);
+  --halo-cool:        rgba(21, 20, 15, 0.06);
+  --scrim:            rgba(21, 20, 15, 0.45);
+
+  --surface-page:    #EFECE5;
+  --surface-raised:  #F6F3EC;
+  --surface-sunken:  #E7E3DA;
+
+  --border-quiet:    rgba(21, 20, 15, 0.10);
+  --border-strong:   rgba(21, 20, 15, 0.45);
+
+  --text-primary:    #15140F;
+  --text-secondary:  #4A483F;
+  --text-tertiary:   #6A675A;
+
+  --tone-success-bg:     #DFEBDD;
+  --tone-success-fg:     #0F5C3B;
+  --tone-success-accent: #0F6B43;
+  --tone-warning-bg:     #F3E6C8;
+  --tone-warning-fg:     #6F4A00;
+  --tone-warning-accent: #855700;
+  --tone-danger-bg:      #F3DDD6;
+  --tone-danger-fg:      #8A1C16;
+  --tone-danger-accent:  #AE2A22;
+  --tone-info-bg:        #DDE6EA;
+  --tone-info-fg:        #14527A;
+  --tone-info-accent:    #1B6796;
+  --tone-neutral-bg:     #E7E3DA;
+  --tone-neutral-fg:     #4A483F;
+  --tone-neutral-accent: #6A675A;
+}
+
+/* =========================================================
+   4. SEMANTIC TYPOGRAPHY
+   ========================================================= */
+body, .pontem-body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--fg);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mono uppercase eyebrow — the most-used Pontem typographic move. */
+.eyebrow, .pontem-eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: var(--track-eyebrow);
+  text-transform: uppercase;
+  color: var(--accent-bright);
+}
+.kicker, .pontem-kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+}
+/* Stamps for cover sheets / draft markers */
+.stamp, .pontem-stamp {
+  display: inline-flex; align-items: center;
+  height: 28px; padding: 0 14px;
+  border: 1px solid var(--line); border-radius: var(--radius-pill);
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  letter-spacing: var(--track-stamp); text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.display-xl, .pontem-display-xl {
+  font-family: var(--font-display); font-size: var(--text-display-xl);
+  font-weight: 700; line-height: 1.0; letter-spacing: var(--track-display);
+  text-wrap: balance;
+}
+.display, .pontem-display {
+  font-family: var(--font-display); font-size: var(--text-display);
+  font-weight: 700; line-height: 1.02; letter-spacing: var(--track-display);
+  text-wrap: balance;
+}
+.h1, .pontem-h1 {
+  font-family: var(--font-display); font-size: var(--text-5xl);
+  font-weight: 700; line-height: 1.08; letter-spacing: var(--track-tight);
+  text-wrap: balance;
+}
+.h2, .pontem-h2 {
+  font-family: var(--font-sans); font-size: var(--text-4xl);
+  font-weight: 600; line-height: 1.15; letter-spacing: var(--track-tight);
+}
+.h3, .pontem-h3 {
+  font-family: var(--font-sans); font-size: var(--text-2xl);
+  font-weight: 600; line-height: 1.3; letter-spacing: -0.01em;
+}
+.h4, .pontem-h4 {
+  font-family: var(--font-sans); font-size: var(--text-lg);
+  font-weight: 600; line-height: 1.4;
+}
+.lead, .pontem-lead {
+  font-family: var(--font-sans); font-size: var(--text-xl);
+  font-weight: 300; line-height: 1.5; color: var(--fg-muted);
+}
+p, .pontem-p {
+  font-family: var(--font-sans); font-size: var(--text-base);
+  font-weight: 400; line-height: 1.6; color: var(--fg-muted);
+}
+.small, .pontem-small  { font-size: var(--text-sm); color: var(--fg-muted); }
+.caption, .pontem-caption { font-size: var(--text-xs); color: var(--fg-subtle); }
+
+.mono, .pontem-mono, code, pre, kbd, samp {
+  font-family: var(--font-mono);
+  font-feature-settings: "ss01", "ss02";
+}
+.metric, .pontem-metric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  font-feature-settings: "ss01";
+}
+
+/* Pull-quote — serif italic, reserved for proposals */
+.pullquote, .pontem-pullquote {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--text-4xl);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+  text-wrap: balance;
+}
+
+/* =========================================================
+   5. BRAND TEXTURE UTILITIES
+   Usage:
+     <div class="tex-dotgrid">…</div>           (light dotted grid)
+     <div class="tex-blueprint">…</div>          (cyan blueprint lines)
+     <div class="tex-halo">…</div>               (soft brand halo)
+     <div class="tex-dotgrid tex-mask-fade">…</div>   (fade edges)
+   They auto-flip in dark mode via the texture tokens above.
+   ========================================================= */
+
+[class*="tex-"] { position: relative; }
+
+.tex-dotgrid::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(circle, var(--grid-dot-color) 1px, transparent 1px);
+  background-size: var(--grid-cell) var(--grid-cell);
+}
+.tex-dotgrid-lg::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(circle, var(--grid-dot-color) 1.2px, transparent 1.2px);
+  background-size: var(--grid-cell-lg) var(--grid-cell-lg);
+}
+.tex-blueprint::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid-line-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line-color) 1px, transparent 1px);
+  background-size: var(--grid-cell) var(--grid-cell), var(--grid-cell) var(--grid-cell);
+}
+.tex-halo::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(circle at 22% 28%, var(--halo-warm) 0%, transparent 55%),
+    radial-gradient(circle at 78% 78%, var(--halo-cool) 0%, transparent 55%);
+}
+/* Combinable mask — fade texture toward edges, keep content readable */
+.tex-mask-fade::before { mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%); }
+.tex-mask-top::before  { mask-image: linear-gradient(to bottom, #000 0, #000 60%, transparent 100%); }
+.tex-mask-bottom::before { mask-image: linear-gradient(to top, #000 0, #000 60%, transparent 100%); }
+
+/* Bridge gradient as a backplate for hero moments. */
+.brand-gradient { background: var(--gradient-bridge); color: var(--fg-on-brand); }
+.brand-gradient-soft { background: var(--gradient-bridge-soft); color: var(--fg-on-brand); }
+.brand-night { background: var(--gradient-night); color: #fff; }
+
+/* Pulse — used for live indicators in product AND on decks */
+@keyframes pontem-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.pulse-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--success); animation: pontem-pulse 2s infinite var(--ease-in-out);
+}
+
+/* Hairline divider — appears across product, decks, proposals */
+.rule {
+  height: 1px; background: var(--line); border: 0; margin: 0;
+}
+.rule-dotted {
+  height: 1px; border: 0; background: transparent;
+  background-image: linear-gradient(90deg, var(--line-strong) 50%, transparent 50%);
+  background-size: 8px 1px;
+}
+
+/* =========================================================
+   6. FOCUS / SELECTION — consistent across modes
+   ========================================================= */
+:focus-visible {
+  outline: 2px solid var(--line-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+::selection { background: var(--accent-bright); color: var(--accent-fg); }

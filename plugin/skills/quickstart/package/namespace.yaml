@@ -3,7 +3,7 @@ description: Config for the Pontem quickstart package
 keys:
   GREETING:
     type: string
-    default: "Hello from Pontem"
+    default: "Hello World!"
     description: Headline shown on the quickstart page
   HOST_PORT:
     type: integer

@@ -193,11 +193,12 @@ pontem app url <app>
 ```
 
 Give the user the link. Opening it asks them to sign in to Pontem, then shows the
-page with the greeting "Hello from Pontem".
+page with the greeting "Hello World!" and a panel describing their device.
 
 ## Step 8: Change a config value
 
-Ask the user what the page should say instead of "Hello from Pontem".
+Ask the user what the page should say instead of "Hello World!". Tell them to keep
+the page open: it watches for the change and updates on its own.
 
 Record the current state:
 
@@ -209,23 +210,27 @@ Set the new value for this device only. It overrides the namespace default witho
 changing it for other devices:
 
 ```bash
-pontem config override set GREETING="<their text>" --namespace quickstart --scope device:<device-name> --yes
+pontem config override set GREETING='<their text>' --namespace quickstart --scope device:<device-name> --yes
 ```
+
+Single quotes keep the shell from expanding `!`, `$` or backticks in their text. Write
+a single quote inside it as `'\''`.
 
 The device picks the change up on its next check-in, about every 30 seconds, and
 restarts the service with the new value. Poll `pontem curl <app> /config.json` every
-10 seconds until `started_at` changes, for up to 3 minutes. If it hasn't changed by
+10 seconds until `boot_id` changes, for up to 3 minutes. If it hasn't changed by
 then, run `pontem device package redeploy quickstart --name <device-name> --yes` and
 poll again.
 
 Show the user what changed, as a small before and after table of `greeting` and
 `started_at`. Then explain in two or three sentences:
 
-- The namespace default is still "Hello from Pontem". The override applies to this
+- The namespace default is still "Hello World!". The override applies to this
   device only.
 - The daemon on the device restarted the service with the new value. Nobody
   published a new package version.
-- Reloading the browser link shows the new greeting.
+- The open page showed the service going down and coming back with the new
+  greeting. Its activity log lists both.
 
 ## Wrap up
 
