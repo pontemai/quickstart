@@ -16,7 +16,9 @@ step is idempotent: before creating something, check whether it already exists a
 reuse it. If the user re-runs this skill, pick up where the last run stopped.
 
 Talk to the user in short lines: what you are about to do, then the result. Show
-commands you run only when they fail or when the user has to run one.
+commands you run only when they fail or when the user has to run one. The user doesn't
+see command output, so anything they need from it, like the link in step 7, goes in
+your own message.
 
 This skill's directory holds `package/`, the four files you publish in step 5.
 
@@ -227,9 +229,11 @@ pontem app url <app>
 A new link takes about 20 seconds to come online. Until it does, `pontem curl <app> /health`
 fails with HTTP 503 "API route offline". Retry it every 5 seconds, for up to 2 minutes.
 
-Once it answers `ok`, give the user the link. Opening it asks them to sign in to Pontem, then shows the
-page with the greeting "Hello World!" and a panel of their device's details from
-the Pontem API.
+Once it answers `ok`, stop and give the user the link. Write the URL itself in your
+message, on its own line, and ask them to open it. Opening it asks them to sign in to
+Pontem, then shows the page with the greeting "Hello World!" and a panel of their
+device's details from the Pontem API. Wait until they say the page is open before
+starting step 8.
 
 If the panel shows an error instead, the message says why. The usual one is "The
 Pontem API refused the key": check that `sa_quickstart` has `devices:read` with
