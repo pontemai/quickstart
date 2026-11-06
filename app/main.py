@@ -58,6 +58,7 @@ ADMIN_URL_OK = ADMIN_URL.startswith(("https://", "http://"))
 STATE = {
     "greeting": os.environ.get("GREETING", "Hello World!"),
     "device_id": os.environ["PONTEM_DEVICE_ID"],
+    "version": os.environ.get("QUICKSTART_VERSION", ""),
     "package_version": os.environ.get("PONTEM_PACKAGE_VERSION", ""),
     "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     "boot_id": uuid.uuid4().hex[:12],

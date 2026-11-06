@@ -135,7 +135,7 @@
     viewLink.hidden = !current.device_url;
     if (current.device_url) viewLink.href = current.device_url;
     $('foot-device').textContent = current.device_id;
-    $('foot-package').textContent = current.package_version ? 'quickstart v' + current.package_version : 'quickstart (local)';
+    $('foot-package').textContent = current.version ? 'quickstart v' + current.version : 'quickstart (local)';
     $('foot-started').textContent = started.toLocaleString([], { hour12: false });
     $('try-cmd').textContent =
       "pontem config override set GREETING='Your text' --namespace quickstart --scope device:" +
@@ -305,7 +305,7 @@
   setState('live');
   showGreeting(boot.greeting, false);
   renderMeta();
-  logLine('', 'Connected' + (boot.package_version ? ' · package v' + boot.package_version : ''));
+  logLine('', 'Connected' + (boot.version ? ' · quickstart v' + boot.version : ''));
   pollDevice();
   setInterval(pollConfig, CONFIG_POLL_MS);
   setInterval(pollDevice, DEVICE_POLL_MS);

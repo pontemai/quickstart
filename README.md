@@ -48,8 +48,9 @@ browser.
 ## Releasing the image
 
 Push a tag `v<version>` to build `ghcr.io/pontemai/quickstart:<version>` for
-amd64 and arm64. Update the image tag in `plugin/skills/quickstart/package/docker-compose.yaml`
-and the version in `version.yaml` to match.
+amd64 and arm64. Update these to match: the image tag in
+`plugin/skills/quickstart/package/docker-compose.yaml`, the version in
+`version.yaml`, and the plugin version in `plugin/.claude-plugin/plugin.json`.
 
 ## License
 
