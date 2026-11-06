@@ -163,7 +163,7 @@ working directory, so they keep the files. Run the rest of this step from there.
    safe.
 
    ```bash
-   pontem config namespace set -f namespace.yaml
+   pontem config namespace set -f namespace.yaml --yes
    ```
 
 3. Create the package if it doesn't exist:
