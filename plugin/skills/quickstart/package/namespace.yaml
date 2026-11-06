@@ -5,6 +5,10 @@ keys:
     type: string
     default: "Hello World!"
     description: Headline shown on the quickstart page
+  ADMIN_URL:
+    type: string
+    default: ""
+    description: Admin app URL for this organization, e.g. https://pontem.acme.com/admin/o/acme. Powers the page's View in Pontem link.
   HOST_PORT:
     type: integer
     default: 8080

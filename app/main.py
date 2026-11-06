@@ -47,6 +47,15 @@ STATIC_TYPES = {
 STATIC = {name: (STATIC_DIR / name).read_bytes() for name in STATIC_TYPES}
 INDEX = (STATIC_DIR / "index.html").read_text()
 
+
+def device_page_url(admin_url: str, device_id: str) -> str:
+    # ADMIN_URL is the organization's admin base, e.g.
+    # https://pontem.acme.com/admin/o/acme. Only http(s) values become a link.
+    if not admin_url.startswith(("https://", "http://")):
+        return ""
+    return f"{admin_url.rstrip('/')}/devices/{device_id}"
+
+
 STATE = {
     "greeting": os.environ.get("GREETING", "Hello World!"),
     "device_id": os.environ["PONTEM_DEVICE_ID"],
@@ -54,6 +63,7 @@ STATE = {
     "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     "boot_id": uuid.uuid4().hex[:12],
 }
+STATE["device_url"] = device_page_url(os.environ.get("ADMIN_URL", ""), STATE["device_id"])
 
 pontem.init(service_name="quickstart")
 log = pontem.logger

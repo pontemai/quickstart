@@ -128,7 +128,10 @@ Move on once it shows a recent report from the device.
 Copy this skill's `package/` directory to `./pontem-quickstart/` in the user's
 working directory, so they keep the files. Run the rest of this step from there.
 
-1. Create or update the config namespace. Re-running is safe.
+1. In `namespace.yaml`, set the `ADMIN_URL` default to
+   `https://<control-plane>/admin/o/<tenant>`, the organization's admin URL from
+   the inputs. The page's **View in Pontem** link opens the device there. Then
+   create or update the namespace. Re-running is safe.
 
    ```bash
    pontem config namespace set -f namespace.yaml

@@ -37,6 +37,18 @@ body {
 .nav-logo svg { height: 22px; width: auto; display: block; fill: currentColor; }
 .nav-right { display: flex; align-items: center; gap: 16px; }
 
+.cta {
+  display: inline-flex; align-items: center; height: 34px; padding: 0 14px;
+  font: var(--mono-label); letter-spacing: 0.1em; text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  transition: background var(--duration-2) var(--ease-out);
+}
+.cta:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.cta[hidden] { display: none; }
+
 .status {
   display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px;
   font: var(--mono-label); letter-spacing: 0.1em; text-transform: uppercase;
@@ -250,7 +262,8 @@ body[data-state="live"] .antenna-tip { fill: var(--accent); animation: pontem-pu
 }
 @media (max-width: 420px) {
   .status { padding: 0 8px; }
-  #status-text { display: none; }
+  #status-text, .cta-long { display: none; }
+  .cta { padding: 0 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

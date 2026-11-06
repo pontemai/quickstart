@@ -18,6 +18,7 @@ services:
           create_host_path: false
     environment:
       GREETING: "${GREETING}"
+      ADMIN_URL: "${ADMIN_URL}"
       PONTEM_TENANT_ID: "${PONTEM_TENANT_ID}"
       PONTEM_DEVICE_ID: "${PONTEM_DEVICE_ID}"
       PONTEM_PACKAGE_VERSION: "${PONTEM_PACKAGE_VERSION}"

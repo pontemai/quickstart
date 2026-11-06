@@ -131,6 +131,9 @@
 
   function renderMeta() {
     const started = new Date(current.started_at);
+    const viewLink = $('view-in-pontem');
+    viewLink.hidden = !current.device_url;
+    if (current.device_url) viewLink.href = current.device_url;
     $('foot-device').textContent = current.device_id;
     $('foot-package').textContent = current.package_version ? 'quickstart v' + current.package_version : 'quickstart (local)';
     $('foot-started').textContent = started.toLocaleString([], { hour12: false });
