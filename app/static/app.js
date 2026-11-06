@@ -1,16 +1,19 @@
 // Quickstart page behavior.
 //
-// The page polls config.json every two seconds. Each process start reports a
-// new boot_id, so a changed boot_id means the device restarted the service,
-// usually because its config changed. While the service is down the polls fail
-// and the page shows the device applying config. The drawing, status pill and
-// activity log all follow one state: live, applying, success or lost.
+// Two polls, every two seconds. device.json is this device as Pontem sees it.
+// Pontem marks the device pending the moment a change is saved; the device
+// picks the change up at its next check-in and restarts this service with it;
+// Pontem marks it in sync at the check-in after that. config.json is the
+// service itself: each process start reports a new boot_id, so a changed
+// boot_id means the restart happened, and failed polls mean it's underway.
+// The drawing, status pill and activity log all follow one state: live,
+// pending, applying, success or lost.
 (function () {
   const $ = (id) => document.getElementById(id);
   const boot = JSON.parse($('boot').textContent);
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const CONFIG_POLL_MS = 2000;
-  const DEVICE_POLL_MS = 5000;
+  const DEVICE_POLL_MS = 2000;
   const LOST_AFTER_MS = 120000;
 
   // ── Fig. 1: control plane wired to this device ─────────
@@ -75,7 +78,7 @@
   ].map((n) => n.toFixed(1)).join(' '));
 
   // ── State ──────────────────────────────────────────────
-  const STATUS = { live: 'Live', applying: 'Applying config', success: 'Updated', lost: 'Not reachable' };
+  const STATUS = { live: 'Live', pending: 'Change pending', applying: 'Applying config', success: 'Updated', lost: 'Not reachable' };
   let state = 'live';
   let current = boot;
   let downSince = null;
@@ -101,7 +104,7 @@
     li.append(time, msg);
     const log = $('log');
     log.append(li);
-    while (log.children.length > 4) log.firstElementChild.remove();
+    while (log.children.length > 5) log.firstElementChild.remove();
   }
 
   // Scramble from the old greeting into the new one, left to right.
@@ -166,8 +169,10 @@
       }
       if (downSince === null) {
         downSince = Date.now();
+        logLine('warn', state === 'pending'
+          ? 'Device picked it up, restarting'
+          : 'Service went down, likely for a config change');
         setState('applying');
-        logLine('warn', 'Service went down, likely for a config change');
       } else if (state !== 'lost' && Date.now() - downSince > LOST_AFTER_MS) {
         setState('lost');
         logLine('warn', 'Still unreachable. Reload the page if this persists.');
@@ -229,7 +234,9 @@
       ['Device', d.name, true],
       ['Hardware', hw.alias || hw.model, true, hw.model],
       ['OS', osName(sys), true],
-      ['Status', [cap(d.runtime_status), (d.sync_status || '').replace(/_/g, ' ')].filter(Boolean).join(' · ')],
+      // The one word that matters most, with the full status in the tooltip.
+      ['Status', d.online === false ? 'Offline' : d.runtime_status && d.runtime_status !== 'healthy' ? cap(d.runtime_status) : cap(d.sync_status), false,
+        [d.online === false ? 'Offline' : 'Online', cap(d.runtime_status), cap(d.sync_status)].filter(Boolean).join(' · ')],
       ['Uptime', sys.uptime_sec != null ? uptime(sys.uptime_sec) : null],
       ['Load', res.num_cpus ? (res.cpu_load || 0).toFixed(2) + ' · ' + res.num_cpus + ' cores' : null, false, (hw.cpu && hw.cpu.model) || hw.soc],
       ['Memory', res.total_memory_mb ? gb(res.memory_used_mb) + ' / ' + gb(res.total_memory_mb) + ' GB' : null],
@@ -262,7 +269,7 @@
       cell.append(dt, dd);
       return cell;
     }));
-    age.textContent = result.stale ? 'Stale' : d.last_heartbeat_at ? 'Heartbeat ' + ago(d.last_heartbeat_at) : '';
+    age.textContent = result.stale ? 'Stale' : d.last_heartbeat_at ? checkIn(d) : '';
     age.title = result.stale ? result.error : '';
     age.classList.toggle('stale', Boolean(result.stale));
     if (d.name) {
@@ -274,8 +281,48 @@
       $('foot-daemon').hidden = false;
     }
   }
+  // "Checked in 12s ago", plus when the next check-in is due while a change waits for it.
+  function checkIn(d) {
+    const text = 'Checked in ' + ago(d.last_heartbeat_at);
+    if (state !== 'pending') return text;
+    const left = Math.round(d.heartbeat_interval_seconds - (Date.now() - Date.parse(d.last_heartbeat_at)) / 1000);
+    return text + (left > 0 ? ' · next in ~' + left + 's' : ' · next due now');
+  }
+
+  // ── Pontem's view ──────────────────────────────────────
+  // Logs what Pontem reports between check-ins, so the gap between saving a
+  // change and the device running it shows up on the page.
+  let pontem = null;
+  function trackPontem(d) {
+    const prev = pontem;
+    pontem = d;
+    const newChange = d.sync_status === 'pending' &&
+      (!prev || prev.sync_status !== 'pending' || d.config_version > prev.config_version);
+    if (newChange && state === 'live') {
+      setState('pending');
+      logLine('em', 'Change saved, awaiting check-in');
+    } else if (prev && state === 'pending' && d.last_heartbeat_at !== prev.last_heartbeat_at) {
+      // Keep only the latest check-in so the change itself stays in view.
+      const last = $('log').lastElementChild;
+      if (last && last.dataset.checkIn) last.remove();
+      logLine('', 'Device checked in');
+      $('log').lastElementChild.dataset.checkIn = 'true';
+    }
+    if (prev && d.sync_status !== prev.sync_status) {
+      if (d.sync_status === 'in_sync') logLine('ok', 'Pontem confirms: in sync');
+      if (d.sync_status === 'failed') logLine('warn', 'The change failed on the device');
+      if (d.sync_status === 'rolled_back') logLine('warn', 'The device rolled back the change');
+      if (d.sync_status !== 'pending' && state === 'pending') setState('live');
+    }
+    if (prev && d.online !== prev.online) {
+      logLine(d.online ? '' : 'warn', d.online ? 'Device is back online' : 'Pontem lost contact with the device');
+    }
+  }
   async function pollDevice() {
-    try { renderDevice(await fetchJSON('device.json')); } catch (err) { /* keep the last reading */ }
+    let result;
+    try { result = await fetchJSON('device.json'); } catch (err) { return; /* keep the last reading */ }
+    if (result.ok && !result.stale) trackPontem(result.device);
+    renderDevice(result);
   }
 
   // ── Try it ─────────────────────────────────────────────

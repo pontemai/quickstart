@@ -43,7 +43,9 @@ The page shows its device as the Pontem API reports it. The skill creates a
 service account with `devices:read`, stores a 30-day key as the tenant secret
 `quickstart-api-key`, and passes it to the container through the `API_KEY`
 config key. The container calls the API itself; the key never reaches the
-browser.
+browser. The page shows whether Pontem has a change the device hasn't applied
+yet, and follows the device through its check-ins until Pontem reports it in
+sync.
 
 ## Releasing the image
 

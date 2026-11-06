@@ -75,13 +75,14 @@ metrics = pontem.metrics
 class DeviceSource:
     """This device from the Pontem API, fetched at most every CACHE_SECONDS.
 
-    Devices heartbeat about every 30 seconds, so polling faster gains nothing.
-    `get()` always returns a dict for the page: `ok` with the device, or `ok:
-    false` with an error the page shows. After a failed fetch the last good
-    reading is kept and marked stale.
+    Pontem marks the device `pending` as soon as someone saves a change for it,
+    well before the device's next check-in, so the page polls often enough to
+    show that. `get()` always returns a dict for the page: `ok` with the device,
+    or `ok: false` with an error the page shows. After a failed fetch the last
+    good reading is kept and marked stale.
     """
 
-    CACHE_SECONDS = 10
+    CACHE_SECONDS = 2
     TIMEOUT_SECONDS = 5
     HEARTBEAT_SECTIONS = ("system", "resources", "gpu", "link")
 
@@ -96,7 +97,9 @@ class DeviceSource:
             else None
         )
         parts = urlsplit(admin_url)
-        self._url = f"{parts.scheme}://{parts.netloc}/tenant-api/devices/{device_id}"
+        self._url = (
+            f"{parts.scheme}://{parts.netloc}/tenant-api/tenants/{tenant_id}/devices/{device_id}"
+        )
         self._headers = {"X-API-Key": api_key, "X-Tenant-Id": tenant_id, "Accept": "application/json"}
         self._lock = threading.Lock()
         self._result: dict = {}
@@ -139,10 +142,14 @@ class DeviceSource:
         heartbeat = device.get("last_heartbeat") or {}
         return {
             "name": device.get("name"),
+            "online": device.get("online"),
             "runtime_status": device.get("runtime_status"),
             "sync_status": device.get("sync_status"),
+            # Goes up each time Pontem saves a change for this device.
+            "config_version": (device.get("desired_state") or {}).get("config_version"),
+            "heartbeat_interval_seconds": device.get("heartbeat_interval_seconds") or 30,
             "labels": device.get("labels") or {},
-            "last_heartbeat_at": device.get("last_heartbeat_at"),
+            "last_heartbeat_at": device.get("last_seen_at"),
             "daemon_version": (heartbeat.get("daemon") or {}).get("version"),
             **{key: heartbeat.get(key) or {} for key in self.HEARTBEAT_SECTIONS},
         }
