@@ -69,7 +69,8 @@
   add(dev, 'polyline', { class: 's', 'stroke-width': 1.25, points: pts([9.5, 5.45, 1.3], [9.5, 5.45, 3.6]) });
   const [tx, ty] = iso(9.5, 5.45, 3.6);
   add(dev, 'circle', { class: 'antenna-tip', cx: tx.toFixed(1), cy: ty.toFixed(1), r: 2.6 });
-  const hostLabel = label(scene, 10.5, 9.5, 'your device', 22);
+  // Under the plate's front corner, so a long device name clears its edges.
+  const hostLabel = label(scene, 13.5, 9.5, 'your device', 16);
 
   const pad = 28;
   scene.setAttribute('viewBox', [
