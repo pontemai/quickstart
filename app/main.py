@@ -150,6 +150,12 @@ class DeviceSource:
             "heartbeat_interval_seconds": device.get("heartbeat_interval_seconds") or 30,
             "labels": device.get("labels") or {},
             "last_heartbeat_at": device.get("last_seen_at"),
+            # The version the device last said it's working toward. It reaches
+            # config_version at the first check-in after a save, a check-in
+            # before the device restarts anything.
+            "device_config_version": (
+                heartbeat.get("daemon_state") or heartbeat.get("agent_state") or {}
+            ).get("target_version"),
             "daemon_version": (heartbeat.get("daemon") or {}).get("version"),
             **{key: heartbeat.get(key) or {} for key in self.HEARTBEAT_SECTIONS},
         }

@@ -1,13 +1,13 @@
 // Quickstart page behavior.
 //
 // Two polls, every two seconds. device.json is this device as Pontem sees it.
-// Pontem marks the device pending the moment a change is saved; the device
-// picks the change up at its next check-in and restarts this service with it;
-// Pontem marks it in sync at the check-in after that. config.json is the
-// service itself: each process start reports a new boot_id, so a changed
-// boot_id means the restart happened, and failed polls mean it's underway.
-// The drawing, status pill and activity log all follow one state: live,
-// pending, applying, success or lost.
+// Pontem marks the device pending the moment a change is saved. The device
+// gets the change at its next check-in, restarts this service with it at the
+// check-in after, and Pontem marks it in sync at the one after that, so the
+// page stays pending until then. config.json is the service itself: each
+// process start reports a new boot_id, so a changed boot_id means the restart
+// happened, and failed polls mean it's underway. The drawing, status pill and
+// activity log all follow one state: live, pending, applying, success or lost.
 (function () {
   const $ = (id) => document.getElementById(id);
   const boot = JSON.parse($('boot').textContent);
@@ -84,11 +84,18 @@
   let downSince = null;
   let successTimer = null;
 
-  function setState(next) {
+  function setState(next, label) {
     state = next;
     document.body.dataset.state = next;
-    $('status-text').textContent = STATUS[next];
+    $('status-text').textContent = label || STATUS[next];
   }
+  function flashSuccess(label) {
+    setState('success', label);
+    clearTimeout(successTimer);
+    successTimer = setTimeout(() => { if (state === 'success') setState('live'); }, 3500);
+  }
+  // A change Pontem has saved but not yet confirmed on the device.
+  const awaitingSync = () => Boolean(pontem && pontem.sync_status === 'pending');
 
   function clock(date) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
@@ -169,8 +176,8 @@
       }
       if (downSince === null) {
         downSince = Date.now();
-        logLine('warn', state === 'pending'
-          ? 'Device picked it up, restarting'
+        logLine('warn', awaitingSync()
+          ? 'Restarting with the change'
           : 'Service went down, likely for a config change');
         setState('applying');
       } else if (state !== 'lost' && Date.now() - downSince > LOST_AFTER_MS) {
@@ -191,11 +198,12 @@
       } else {
         logLine('ok', 'Service restarted, config unchanged');
       }
-      setState('success');
-      clearTimeout(successTimer);
-      successTimer = setTimeout(() => { if (state === 'success') setState('live'); }, 3500);
+      // The device reports the result at its next check-in; until Pontem
+      // confirms it, the change isn't done.
+      if (awaitingSync()) setState('pending', 'Confirming');
+      else flashSuccess();
     } else if (wasDown) {
-      setState('live');
+      setState(awaitingSync() ? 'pending' : 'live');
       logLine('', 'Reconnected');
     }
   }
@@ -284,7 +292,7 @@
   // "Checked in 12s ago", plus when the next check-in is due while a change waits for it.
   function checkIn(d) {
     const text = 'Checked in ' + ago(d.last_heartbeat_at);
-    if (state !== 'pending') return text;
+    if (d.sync_status !== 'pending') return text;
     const left = Math.round(d.heartbeat_interval_seconds - (Date.now() - Date.parse(d.last_heartbeat_at)) / 1000);
     return text + (left > 0 ? ' · next in ~' + left + 's' : ' · next due now');
   }
@@ -293,26 +301,36 @@
   // Logs what Pontem reports between check-ins, so the gap between saving a
   // change and the device running it shows up on the page.
   let pontem = null;
+  let deviceHasChange = false;
   function trackPontem(d) {
     const prev = pontem;
     pontem = d;
     const newChange = d.sync_status === 'pending' &&
       (!prev || prev.sync_status !== 'pending' || d.config_version > prev.config_version);
-    if (newChange && state === 'live') {
+    if (newChange && (state === 'live' || state === 'success')) {
+      deviceHasChange = false;
       setState('pending');
-      logLine('em', 'Change saved, awaiting check-in');
-    } else if (prev && state === 'pending' && d.last_heartbeat_at !== prev.last_heartbeat_at) {
+      logLine('em', 'Change saved, waiting for a check-in');
+    } else if (prev && state === 'pending' && !deviceHasChange && d.last_heartbeat_at !== prev.last_heartbeat_at) {
       // Keep only the latest check-in so the change itself stays in view.
       const last = $('log').lastElementChild;
       if (last && last.dataset.checkIn) last.remove();
-      logLine('', 'Device checked in');
-      $('log').lastElementChild.dataset.checkIn = 'true';
+      if (d.device_config_version != null && d.device_config_version >= d.config_version) {
+        deviceHasChange = true;
+        logLine('', 'Device has the change, getting it ready');
+      } else {
+        logLine('', 'Device checked in');
+        $('log').lastElementChild.dataset.checkIn = 'true';
+      }
     }
     if (prev && d.sync_status !== prev.sync_status) {
-      if (d.sync_status === 'in_sync') logLine('ok', 'Pontem confirms: in sync');
+      if (d.sync_status === 'in_sync') {
+        logLine('ok', 'Pontem confirms: in sync');
+        if (state === 'pending' || state === 'applying') flashSuccess('Synced');
+      }
       if (d.sync_status === 'failed') logLine('warn', 'The change failed on the device');
       if (d.sync_status === 'rolled_back') logLine('warn', 'The device rolled back the change');
-      if (d.sync_status !== 'pending' && state === 'pending') setState('live');
+      if ((d.sync_status === 'failed' || d.sync_status === 'rolled_back') && state === 'pending') setState('live');
     }
     if (prev && d.online !== prev.online) {
       logLine(d.online ? '' : 'warn', d.online ? 'Device is back online' : 'Pontem lost contact with the device');

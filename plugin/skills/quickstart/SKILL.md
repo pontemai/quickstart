@@ -260,8 +260,9 @@ pontem config override set GREETING='<their text>' --namespace quickstart --scop
 Single quotes keep the shell from expanding `!`, `$` or backticks in their text. Write
 a single quote inside it as `'\''`.
 
-The device picks the change up on its next check-in, about every 30 seconds, and
-restarts the service with the new value. Poll `pontem curl <app> /config.json` every
+The device checks in every 30 seconds. It gets the change at its next check-in and
+restarts the service with the new value at the one after, so this takes about a
+minute. Poll `pontem curl <app> /config.json` every
 10 seconds until `boot_id` changes, for up to 3 minutes. Requests fail for a few
 seconds while the service restarts; keep polling. If it hasn't changed by
 then, run `pontem device package redeploy quickstart --name <device-name> --yes` and
@@ -275,9 +276,9 @@ Show the user what changed, as a small before and after table of `greeting` and
 - The daemon on the device restarted the service with the new value. Nobody
   published a new package version.
 - The open page followed the change: Pontem marked it pending as soon as it was
-  saved, the device picked it up at its next check-in and restarted the service,
-  and Pontem confirmed it in sync at the check-in after. Its activity log lists
-  each step.
+  saved, the device got it at its next check-in and restarted the service at the
+  one after, and the page turned green when Pontem confirmed it in sync. Its
+  activity log lists each step.
 
 ## Wrap up
 
