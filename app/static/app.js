@@ -3,11 +3,13 @@
 // Two polls, every two seconds. device.json is this device as Pontem sees it.
 // Pontem marks the device pending the moment a change is saved. The device
 // gets the change at its next check-in, restarts this service with it at the
-// check-in after, and Pontem marks it in sync at the one after that, so the
-// page stays pending until then. config.json is the service itself: each
-// process start reports a new boot_id, so a changed boot_id means the restart
-// happened, and failed polls mean it's underway. The drawing, status pill and
-// activity log all follow one state: live, pending, applying, success or lost.
+// check-in after, and Pontem marks it in sync at the one after that.
+// config.json is the service itself: each process start reports a new
+// boot_id, so a changed boot_id means the restart happened, and failed polls
+// mean it's underway. The activity log shows a change as its four steps, and
+// the drawing and status pill follow one state: live, pending (saved in
+// Pontem), updating (the device has it), applying (restarting), confirming,
+// success or lost.
 (function () {
   const $ = (id) => document.getElementById(id);
   const boot = JSON.parse($('boot').textContent);
@@ -79,7 +81,10 @@
   ].map((n) => n.toFixed(1)).join(' '));
 
   // ── State ──────────────────────────────────────────────
-  const STATUS = { live: 'Live', pending: 'Change pending', applying: 'Applying config', success: 'Updated', lost: 'Not reachable' };
+  const STATUS = {
+    live: 'Live', pending: 'Pending', updating: 'Updating', applying: 'Restarting',
+    confirming: 'Confirming', success: 'Updated', lost: 'Unreachable',
+  };
   let state = 'live';
   let current = boot;
   let downSince = null;
@@ -89,54 +94,132 @@
     state = next;
     document.body.dataset.state = next;
     $('status-text').textContent = label || STATUS[next];
+    renderUpdate();
   }
   function flashSuccess(label) {
     setState('success', label);
     clearTimeout(successTimer);
     successTimer = setTimeout(() => { if (state === 'success') setState('live'); }, 3500);
   }
-  // A change Pontem has saved but not yet confirmed on the device.
-  const awaitingSync = () => Boolean(pontem && pontem.sync_status === 'pending');
-
   function clock(date) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
   }
 
-  function logLine(tone, text) {
+  // A log line is a time, a message, and a hint the current update step uses
+  // for its countdown. A line with no time yet is a step still to come.
+  function logLine(tone, text, when = new Date()) {
     const li = document.createElement('li');
-    const time = document.createElement('time');
-    time.textContent = clock(new Date());
-    const msg = document.createElement('span');
-    if (tone) msg.className = tone;
-    msg.textContent = text;
-    li.append(time, msg);
+    const hint = document.createElement('span');
+    hint.className = 'hint';
+    li.append(document.createElement('time'), document.createElement('span'), hint);
+    setLine(li, tone, text, when);
     const log = $('log');
-    log.append(li);
+    // Events during an update go above the steps still to come.
+    const firstUpcoming = update && update.step < STEPS.length ? update.lines[STEPS[update.step].key] : null;
+    log.insertBefore(li, when && firstUpcoming ? firstUpcoming : null);
     while (log.children.length > 5) log.firstElementChild.remove();
+    return li;
+  }
+  function setLine(li, tone, text, when) {
+    li.children[0].textContent = when ? clock(when) : '--:--:--';
+    li.children[1].className = tone;
+    li.children[1].textContent = text;
+  }
+
+  // ── The update in progress ─────────────────────────────
+  // A change from save to confirmation, as four log lines. All four appear
+  // when the change is saved, so the steps still to come are in view, and the
+  // current one counts down to the check-in that moves it on.
+  const STEPS = [
+    { key: 'saved', next: 'Change saved in Pontem' },
+    { key: 'received', next: 'Device gets the change' },
+    { key: 'restarted', next: 'Service restarts with it' },
+    { key: 'confirmed', next: 'Pontem confirms it' },
+  ];
+  // { version, step: index of the current step, lines: { key: li }, joined }
+  // `joined` marks a change that was already pending when the page opened, so
+  // the steps before that weren't seen.
+  let update = null;
+
+  function startUpdate(version, joined) {
+    const replacing = Boolean(update);
+    // A newer change replaces the steps an earlier one hadn't reached.
+    if (update) endUpdate();
+    update = { version, step: 0, lines: {}, joined };
+    for (const s of STEPS) update.lines[s.key] = logLine('next', s.next, null);
+    advance('saved', 'em', joined ? 'Change already pending'
+      : replacing ? 'Newer change saved in Pontem' : 'Change saved in Pontem');
+  }
+  function advance(key, tone, text) {
+    setLine(update.lines[key], tone, text, new Date());
+    update.step = STEPS.findIndex((s) => s.key === key) + 1;
+    renderUpdate();
+  }
+  function endUpdate() {
+    for (const s of STEPS.slice(update.step)) update.lines[s.key].remove();
+    for (const s of STEPS) update.lines[s.key].classList.remove('current');
+    update = null;
+  }
+  function finishUpdate() {
+    if (update.step < 2) advance('received', '', 'Device got the change');
+    if (update.step < 3) advance('restarted', 'next', 'No restart needed');
+    advance('confirmed', 'ok', 'Pontem confirms: in sync');
+    endUpdate();
+    flashSuccess('Synced');
+  }
+  function failUpdate(text) {
+    const key = STEPS[Math.min(update.step, STEPS.length - 1)].key;
+    advance(key, 'warn', text);
+    endUpdate();
+    setState('live');
+  }
+  function renderUpdate() {
+    if (!update) return;
+    STEPS.forEach((s, i) => {
+      const li = update.lines[s.key];
+      li.classList.toggle('current', i === update.step);
+      li.querySelector('.hint').textContent = i === update.step ? stepHint() : '';
+    });
+  }
+  // Each step after the save waits for a check-in, so its hint counts down to the next one.
+  function stepHint() {
+    if (state === 'applying') return 'now';
+    if (!pontem || !pontem.last_heartbeat_at) return '';
+    const left = Math.round(pontem.heartbeat_interval_seconds - (Date.now() - Date.parse(pontem.last_heartbeat_at)) / 1000);
+    return left > 0 ? 'in ~' + left + 's' : 'any second';
   }
 
   // Scramble from the old greeting into the new one, left to right.
-  function showGreeting(text, animate) {
+  // `before` is the value it replaced, shown under the new one until the next change.
+  function showGreeting(text, animate, before) {
     const el = $('greeting');
     const kv = $('kv-greeting');
     kv.textContent = JSON.stringify(text);
+    $('kv-was').hidden = before === undefined;
+    if (before !== undefined) $('kv-was').textContent = 'was ' + JSON.stringify(before);
     if (!animate) { el.textContent = text; return; }
     kv.classList.remove('flash'); void kv.offsetWidth; kv.classList.add('flash');
     el.classList.add('changed');
     setTimeout(() => el.classList.remove('changed'), 2500);
     if (reduced) { el.textContent = text; return; }
-    const glyphs = '░▒▓<>/\\|=+*#_-';
+    const glyphs = '<>/\\|=+*#_-';
     const chars = Array.from(text);
     const start = performance.now();
     const duration = Math.min(1400, 400 + chars.length * 40);
+    // Hold the final text's height so the scramble can't reflow the page.
+    el.textContent = text;
+    el.style.height = el.getBoundingClientRect().height + 'px';
+    el.style.overflow = 'hidden';
     (function frame(now) {
       const p = Math.min(1, (now - start) / duration);
       const settled = Math.floor(p * chars.length);
       el.textContent = chars.map((ch, i) =>
         i < settled || ch === ' ' ? ch : glyphs[(Math.random() * glyphs.length) | 0]
       ).join('');
-      if (p < 1) requestAnimationFrame(frame);
-      else el.textContent = text;
+      if (p < 1) { requestAnimationFrame(frame); return; }
+      el.textContent = text;
+      el.style.height = '';
+      el.style.overflow = '';
     })(start);
   }
 
@@ -177,9 +260,7 @@
       }
       if (downSince === null) {
         downSince = Date.now();
-        logLine('warn', awaitingSync()
-          ? 'Restarting with the change'
-          : 'Service went down, likely for a config change');
+        if (!update) logLine('warn', 'Service went down, likely for a config change');
         setState('applying');
       } else if (state !== 'lost' && Date.now() - downSince > LOST_AFTER_MS) {
         setState('lost');
@@ -190,21 +271,26 @@
     const wasDown = downSince !== null;
     downSince = null;
     if (next.boot_id !== current.boot_id) {
-      const changed = next.greeting !== current.greeting;
+      const before = current.greeting;
       current = next;
       renderMeta();
-      if (changed) {
-        showGreeting(next.greeting, true);
-        logLine('ok', 'Restarted with GREETING = ' + JSON.stringify(next.greeting));
-      } else {
-        logLine('ok', 'Service restarted, config unchanged');
+      const changed = next.greeting !== before;
+      if (changed) showGreeting(next.greeting, true, before);
+      const text = changed ? 'Restarted with the new GREETING' : 'Restarted, GREETING unchanged';
+      if (!update) {
+        logLine('ok', text);
+        flashSuccess();
+        return;
       }
+      if (update.step < 2) advance('received', '', 'Device got the change');
+      if (update.step === 3) logLine('ok', text); // its step was dropped; see trackPontem
+      else advance('restarted', 'ok', text);
       // The device reports the result at its next check-in; until Pontem
       // confirms it, the change isn't done.
-      if (awaitingSync()) setState('pending', 'Confirming');
-      else flashSuccess();
+      if (pontem.sync_status === 'pending') setState('confirming');
+      else finishUpdate();
     } else if (wasDown) {
-      setState(awaitingSync() ? 'pending' : 'live');
+      setState(!update ? 'live' : update.step >= 3 ? 'confirming' : update.step === 2 ? 'updating' : 'pending');
       logLine('', 'Reconnected');
     }
   }
@@ -290,60 +376,55 @@
       $('foot-daemon').hidden = false;
     }
   }
-  // "Checked in 12s ago", plus when the next check-in is due while a change waits for it.
-  function checkIn(d) {
-    const text = 'Checked in ' + ago(d.last_heartbeat_at);
-    if (d.sync_status !== 'pending') return text;
-    const left = Math.round(d.heartbeat_interval_seconds - (Date.now() - Date.parse(d.last_heartbeat_at)) / 1000);
-    return text + (left > 0 ? ' · next in ~' + left + 's' : ' · next due now');
-  }
+  // The update's current step counts down to the next check-in; this says when the last one was.
+  const checkIn = (d) => 'Checked in ' + ago(d.last_heartbeat_at);
 
   // ── Pontem's view ──────────────────────────────────────
-  // Logs what Pontem reports between check-ins, so the gap between saving a
-  // change and the device running it shows up on the page.
+  // Moves the update along as Pontem reports it: saved, then received at the
+  // device's next check-in, then confirmed in sync.
   let pontem = null;
-  let deviceHasChange = false;
-  function trackPontem(d) {
+  const FAILED = { failed: 'The change failed on the device', rolled_back: 'The device rolled back the change' };
+  async function trackPontem(d) {
     const prev = pontem;
     pontem = d;
     const newChange = d.sync_status === 'pending' &&
       (!prev || prev.sync_status !== 'pending' || d.config_version > prev.config_version);
-    if (newChange && (state === 'live' || state === 'success')) {
-      deviceHasChange = false;
+    if (newChange && (update || state === 'live' || state === 'success')) {
+      startUpdate(d.config_version, !prev);
       setState('pending');
-      logLine('em', 'Change saved, waiting for a check-in');
     }
     // Not `else`: the device can check in between two polls, right after the save.
-    if (prev && state === 'pending' && !deviceHasChange && d.last_heartbeat_at !== prev.last_heartbeat_at) {
-      // Keep only the latest check-in so the change itself stays in view.
-      const last = $('log').lastElementChild;
-      if (last && last.dataset.checkIn) last.remove();
-      if (d.device_config_version != null && d.device_config_version >= d.config_version) {
-        deviceHasChange = true;
-        logLine('', 'Device has the change, getting it ready');
-      } else {
-        logLine('', 'Device checked in');
-        $('log').lastElementChild.dataset.checkIn = 'true';
+    if (update && update.step === 1 && d.device_config_version >= update.version) {
+      advance('received', '', 'Device got the change');
+      // Opened after the device had the change: whether the service already
+      // restarted is unknown, so drop that step and wait for Pontem instead.
+      if (update.joined) {
+        update.lines.restarted.remove();
+        update.step = 3;
       }
-    }
-    if (prev && d.sync_status !== prev.sync_status) {
-      if (d.sync_status === 'in_sync') {
-        logLine('ok', 'Pontem confirms: in sync');
-        if (state === 'pending' || state === 'applying') flashSuccess('Synced');
-      }
-      if (d.sync_status === 'failed') logLine('warn', 'The change failed on the device');
-      if (d.sync_status === 'rolled_back') logLine('warn', 'The device rolled back the change');
-      if ((d.sync_status === 'failed' || d.sync_status === 'rolled_back') && state === 'pending') setState('live');
+      setState('updating');
     }
     if (prev && d.online !== prev.online) {
       logLine(d.online ? '' : 'warn', d.online ? 'Device is back online' : 'Pontem lost contact with the device');
+    }
+    if (!prev || d.sync_status === prev.sync_status) return renderUpdate();
+    if (!update) {
+      if (d.sync_status === 'in_sync') logLine('ok', 'Pontem confirms: in sync');
+      if (FAILED[d.sync_status]) logLine('warn', FAILED[d.sync_status]);
+    } else if (FAILED[d.sync_status]) {
+      failUpdate(FAILED[d.sync_status]);
+    } else if (d.sync_status === 'in_sync') {
+      // At short check-in intervals Pontem can confirm before the next config
+      // poll sees the restart, so look once more before calling it no-restart.
+      if (update.step < 3) await pollConfig();
+      if (update) finishUpdate();
     }
   }
   async function pollDevice() {
     let result;
     try { result = await fetchJSON('device.json'); } catch (err) { return; /* keep the last reading */ }
-    if (result.ok && !result.stale) trackPontem(result.device);
     renderDevice(result);
+    if (result.ok && !result.stale) await trackPontem(result.device);
   }
 
   // ── Try it ─────────────────────────────────────────────
@@ -377,4 +458,9 @@
   pollDevice();
   setInterval(pollConfig, CONFIG_POLL_MS);
   setInterval(pollDevice, DEVICE_POLL_MS);
+  setInterval(renderUpdate, 1000);
+  // Browsers slow timers in background tabs; catch up as soon as the tab is back.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { pollConfig(); pollDevice(); }
+  });
 })();

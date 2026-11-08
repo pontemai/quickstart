@@ -60,7 +60,7 @@ body {
   width: 6px; height: 6px; border-radius: 50%; background: currentColor;
   animation: pontem-pulse 2s infinite var(--ease-in-out);
 }
-body[data-state="pending"] .status { color: var(--accent); }
+body:is([data-state="pending"], [data-state="updating"], [data-state="confirming"]) .status { color: var(--accent); }
 body[data-state="applying"] .status { color: var(--tone-warning-accent); }
 body[data-state="lost"] .status { color: var(--fg-subtle); }
 body[data-state="lost"] .status-dot { animation: none; }
@@ -130,7 +130,9 @@ body[data-state="lost"] .status-dot { animation: none; }
 }
 .kv dt { color: var(--fg-subtle); }
 .kv dd { color: var(--fg); overflow-wrap: anywhere; }
-.kv dd.flash { animation: kv-flash 2.5s var(--ease-out); }
+.kv .flash { animation: kv-flash 2.5s var(--ease-out); }
+.kv .was { display: block; color: var(--fg-disabled); font-size: 12px; }
+.kv .was[hidden] { display: none; }
 @keyframes kv-flash {
   from { background: color-mix(in srgb, var(--accent) 30%, transparent); }
   to   { background: transparent; }
@@ -142,11 +144,17 @@ body[data-state="lost"] .status-dot { animation: none; }
   font-size: 12.5px; line-height: 22px; color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
 }
-.log li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.log time { color: var(--fg-disabled); margin-right: 12px; }
+.log li { display: flex; white-space: nowrap; }
+.log li > span:not(.hint) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.log time { flex: none; color: var(--fg-disabled); margin-right: 12px; }
 .log .ok { color: var(--tone-success-accent); }
 .log .warn { color: var(--tone-warning-accent); }
 .log .em { color: var(--fg); }
+/* Update steps still to come, and the one in progress with its countdown */
+.log .next { color: var(--fg-disabled); }
+.log .current .next { color: var(--fg); }
+.log .hint { flex: none; margin-left: auto; padding-left: 12px; color: var(--accent); }
+.log .current .hint { animation: pontem-pulse 2s infinite var(--ease-in-out); }
 
 .try {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -200,8 +208,10 @@ body[data-state="lost"] .status-dot { animation: none; }
   fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round;
   stroke-dasharray: 0.06 1; stroke-dashoffset: 0.06; opacity: 0;
 }
-/* Pending: the change waits in Pontem for the next check-in. Applying: it's landing. */
+/* Pending: the change waits in Pontem for the next check-in. Applying: it's
+   landing. Confirming: the device reports back. */
 body[data-state="pending"] .packet { opacity: 1; animation: packet 2400ms linear infinite; }
+body[data-state="confirming"] .packet { opacity: 1; animation: packet 2400ms linear infinite reverse; }
 body[data-state="applying"] .packet { opacity: 1; animation: packet 1600ms linear infinite; }
 @keyframes packet { to { stroke-dashoffset: -1; } }
 
@@ -210,13 +220,13 @@ body[data-state="applying"] .packet { opacity: 1; animation: packet 1600ms linea
 .dev .f-r { fill: var(--fig-off-r); stroke: var(--line); }
 .dev .s { stroke: var(--line-strong); }
 body[data-state="live"] .dev .f-t,
-body[data-state="pending"] .dev .f-t { fill: var(--fig-live-t); stroke: var(--bg); }
+body:is([data-state="pending"], [data-state="updating"], [data-state="confirming"]) .dev .f-t { fill: var(--fig-live-t); stroke: var(--bg); }
 body[data-state="live"] .dev .f-l,
-body[data-state="pending"] .dev .f-l { fill: var(--fig-live-l); stroke: var(--bg); }
+body:is([data-state="pending"], [data-state="updating"], [data-state="confirming"]) .dev .f-l { fill: var(--fig-live-l); stroke: var(--bg); }
 body[data-state="live"] .dev .f-r,
-body[data-state="pending"] .dev .f-r { fill: var(--fig-live-r); stroke: var(--bg); }
+body:is([data-state="pending"], [data-state="updating"], [data-state="confirming"]) .dev .f-r { fill: var(--fig-live-r); stroke: var(--bg); }
 body[data-state="live"] .dev .s,
-body[data-state="pending"] .dev .s { stroke: var(--fig-live-t); }
+body:is([data-state="pending"], [data-state="updating"], [data-state="confirming"]) .dev .s { stroke: var(--fig-live-t); }
 body[data-state="applying"] .dev .f-t { fill: var(--warning); stroke: var(--bg); }
 body[data-state="applying"] .dev .f-l { fill: var(--fig-rolling-l); stroke: var(--bg); }
 body[data-state="applying"] .dev .f-r { fill: var(--fig-rolling-r); stroke: var(--bg); }
@@ -229,7 +239,9 @@ body[data-state="success"] .dev .s { stroke: var(--success); }
 body[data-state="success"] .plate { stroke: var(--success); }
 .antenna-tip { fill: var(--fg-subtle); }
 body[data-state="live"] .antenna-tip,
-body[data-state="pending"] .antenna-tip { fill: var(--accent); animation: pontem-pulse 2s infinite var(--ease-in-out); }
+body:is([data-state="pending"], [data-state="confirming"]) .antenna-tip { fill: var(--accent); animation: pontem-pulse 2s infinite var(--ease-in-out); }
+/* Updating: the device has the change and is getting it ready. */
+body[data-state="updating"] .antenna-tip { fill: var(--accent); animation: pontem-pulse 0.8s infinite var(--ease-in-out); }
 
 /* Spec sheet under the drawing: this device as the Pontem API reports it */
 .spec-head {
@@ -285,9 +297,13 @@ body[data-state="pending"] .antenna-tip { fill: var(--accent); animation: pontem
   .nav-logo svg { height: 16px; }
 }
 @media (max-width: 420px) {
+  .nav-right { gap: 8px; }
   .status { padding: 0 8px; }
-  #status-text, .cta-long { display: none; }
+  .cta-long { display: none; }
   .cta { padding: 0 10px; }
+}
+@media (max-width: 379px) {
+  .cta-mid { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
