@@ -275,10 +275,9 @@ Show the user what changed, as a small before and after table of `greeting` and
   device only.
 - The daemon on the device restarted the service with the new value. Nobody
   published a new package version.
-- The open page followed the change: Pontem marked it pending as soon as it was
-  saved, the device got it at its next check-in and restarted the service at the
-  one after, and the page turned green when Pontem confirmed it in sync. Its
-  activity log lists each step.
+- The open page followed the device as the Pontem API reports it: amber as soon
+  as the change was saved, green once Pontem had the device back in sync. Its
+  activity log has a line for each change in between.
 
 ## Wrap up
 

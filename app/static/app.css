@@ -9,6 +9,7 @@
   --fig-live-t: var(--accent); --fig-live-l: #1F3653; --fig-live-r: #14253B;
   --fig-success-l: #0C4A35; --fig-success-r: #083324;
   --fig-rolling-l: #5C3F0A; --fig-rolling-r: #3D2A07;
+  --fig-failed-l: #5C1A16; --fig-failed-r: #3D110E;
   --fig-plate: rgba(255, 255, 255, 0.012);
 }
 
@@ -60,10 +61,10 @@ body {
   width: 6px; height: 6px; border-radius: 50%; background: currentColor;
   animation: pontem-pulse 2s infinite var(--ease-in-out);
 }
-body:is([data-state="pending"], [data-state="updating"], [data-state="confirming"]) .status { color: var(--accent); }
-body[data-state="applying"] .status { color: var(--tone-warning-accent); }
-body[data-state="lost"] .status { color: var(--fg-subtle); }
-body[data-state="lost"] .status-dot { animation: none; }
+body[data-state="pending"] .status { color: var(--tone-warning-accent); }
+body:is([data-state="failed"], [data-state="rolled_back"]) .status { color: var(--tone-danger-accent); }
+body:is([data-state="connecting"], [data-state="unknown"], [data-state="offline"], [data-state="lost"]) .status { color: var(--fg-subtle); }
+body:is([data-state="unknown"], [data-state="offline"], [data-state="lost"]) .status-dot { animation: none; }
 
 
 /* ── Hero ────────────────────────────── */
@@ -144,17 +145,11 @@ body[data-state="lost"] .status-dot { animation: none; }
   font-size: 12.5px; line-height: 22px; color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
 }
-.log li { display: flex; white-space: nowrap; }
-.log li > span:not(.hint) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.log time { flex: none; color: var(--fg-disabled); margin-right: 12px; }
+.log li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log time { color: var(--fg-disabled); margin-right: 12px; }
 .log .ok { color: var(--tone-success-accent); }
 .log .warn { color: var(--tone-warning-accent); }
 .log .em { color: var(--fg); }
-/* Update steps still to come, and the one in progress with its countdown */
-.log .next { color: var(--fg-disabled); }
-.log .current .next { color: var(--fg); }
-.log .hint { flex: none; margin-left: auto; padding-left: 12px; color: var(--accent); }
-.log .current .hint { animation: pontem-pulse 2s infinite var(--ease-in-out); }
 
 .try {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -208,40 +203,33 @@ body[data-state="lost"] .status-dot { animation: none; }
   fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round;
   stroke-dasharray: 0.06 1; stroke-dashoffset: 0.06; opacity: 0;
 }
-/* Pending: the change waits in Pontem for the next check-in. Applying: it's
-   landing. Confirming: the device reports back. */
-body[data-state="pending"] .packet { opacity: 1; animation: packet 2400ms linear infinite; }
-body[data-state="confirming"] .packet { opacity: 1; animation: packet 2400ms linear infinite reverse; }
-body[data-state="applying"] .packet { opacity: 1; animation: packet 1600ms linear infinite; }
+/* Pending: a change is on its way to the device. */
+body[data-state="pending"] .packet { stroke: var(--warning); opacity: 1; animation: packet 2400ms linear infinite; }
 @keyframes packet { to { stroke-dashoffset: -1; } }
 
+/* The device takes the status's color: amber pending, green synced, red failed. */
 .dev .f-t { fill: var(--fig-off-t); stroke: var(--line-strong); }
 .dev .f-l { fill: var(--fig-off-l); stroke: var(--line); }
 .dev .f-r { fill: var(--fig-off-r); stroke: var(--line); }
 .dev .s { stroke: var(--line-strong); }
-body[data-state="live"] .dev .f-t,
-body:is([data-state="pending"], [data-state="updating"], [data-state="confirming"]) .dev .f-t { fill: var(--fig-live-t); stroke: var(--bg); }
-body[data-state="live"] .dev .f-l,
-body:is([data-state="pending"], [data-state="updating"], [data-state="confirming"]) .dev .f-l { fill: var(--fig-live-l); stroke: var(--bg); }
-body[data-state="live"] .dev .f-r,
-body:is([data-state="pending"], [data-state="updating"], [data-state="confirming"]) .dev .f-r { fill: var(--fig-live-r); stroke: var(--bg); }
-body[data-state="live"] .dev .s,
-body:is([data-state="pending"], [data-state="updating"], [data-state="confirming"]) .dev .s { stroke: var(--fig-live-t); }
-body[data-state="applying"] .dev .f-t { fill: var(--warning); stroke: var(--bg); }
-body[data-state="applying"] .dev .f-l { fill: var(--fig-rolling-l); stroke: var(--bg); }
-body[data-state="applying"] .dev .f-r { fill: var(--fig-rolling-r); stroke: var(--bg); }
-body[data-state="applying"] .dev .s { stroke: var(--warning); }
-body[data-state="applying"] .plate { stroke: var(--warning); }
-body[data-state="success"] .dev .f-t { fill: var(--success); stroke: var(--bg); }
-body[data-state="success"] .dev .f-l { fill: var(--fig-success-l); stroke: var(--bg); }
-body[data-state="success"] .dev .f-r { fill: var(--fig-success-r); stroke: var(--bg); }
-body[data-state="success"] .dev .s { stroke: var(--success); }
-body[data-state="success"] .plate { stroke: var(--success); }
+body[data-state="synced"] .dev .f-t { fill: var(--success); stroke: var(--bg); }
+body[data-state="synced"] .dev .f-l { fill: var(--fig-success-l); stroke: var(--bg); }
+body[data-state="synced"] .dev .f-r { fill: var(--fig-success-r); stroke: var(--bg); }
+body[data-state="synced"] .dev .s { stroke: var(--success); }
+body[data-state="synced"] .plate { stroke: var(--success); }
+body[data-state="pending"] .dev .f-t { fill: var(--warning); stroke: var(--bg); }
+body[data-state="pending"] .dev .f-l { fill: var(--fig-rolling-l); stroke: var(--bg); }
+body[data-state="pending"] .dev .f-r { fill: var(--fig-rolling-r); stroke: var(--bg); }
+body[data-state="pending"] .dev .s { stroke: var(--warning); }
+body[data-state="pending"] .plate { stroke: var(--warning); }
+body:is([data-state="failed"], [data-state="rolled_back"]) .dev .f-t { fill: var(--error); stroke: var(--bg); }
+body:is([data-state="failed"], [data-state="rolled_back"]) .dev .f-l { fill: var(--fig-failed-l); stroke: var(--bg); }
+body:is([data-state="failed"], [data-state="rolled_back"]) .dev .f-r { fill: var(--fig-failed-r); stroke: var(--bg); }
+body:is([data-state="failed"], [data-state="rolled_back"]) .dev .s { stroke: var(--error); }
+body:is([data-state="failed"], [data-state="rolled_back"]) .plate { stroke: var(--error); }
 .antenna-tip { fill: var(--fg-subtle); }
-body[data-state="live"] .antenna-tip,
-body:is([data-state="pending"], [data-state="confirming"]) .antenna-tip { fill: var(--accent); animation: pontem-pulse 2s infinite var(--ease-in-out); }
-/* Updating: the device has the change and is getting it ready. */
-body[data-state="updating"] .antenna-tip { fill: var(--accent); animation: pontem-pulse 0.8s infinite var(--ease-in-out); }
+body[data-state="synced"] .antenna-tip { fill: var(--success); animation: pontem-pulse 2s infinite var(--ease-in-out); }
+body[data-state="pending"] .antenna-tip { fill: var(--warning); animation: pontem-pulse 1s infinite var(--ease-in-out); }
 
 /* Spec sheet under the drawing: this device as the Pontem API reports it */
 .spec-head {
