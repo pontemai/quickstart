@@ -52,10 +52,13 @@ call it as `~/.local/bin/pontem` for the rest of this run. Confirm with `pontem 
 
 ```bash
 pontem status
+pontem status --url <control-plane>
 ```
 
-If it shows the right control plane and tenant and a valid token, skip ahead.
-Otherwise:
+`pontem status` shows the saved control plane, sometimes by a short environment
+name like `prod` instead of its URL. With `--url` it shows the one from the inputs.
+If both name the same control plane, the tenant is right, and the token is valid,
+skip ahead. Otherwise:
 
 ```bash
 pontem login --url <control-plane> --tenant <tenant>
