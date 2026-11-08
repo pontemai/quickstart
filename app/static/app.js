@@ -311,7 +311,9 @@
       deviceHasChange = false;
       setState('pending');
       logLine('em', 'Change saved, waiting for a check-in');
-    } else if (prev && state === 'pending' && !deviceHasChange && d.last_heartbeat_at !== prev.last_heartbeat_at) {
+    }
+    // Not `else`: the device can check in between two polls, right after the save.
+    if (prev && state === 'pending' && !deviceHasChange && d.last_heartbeat_at !== prev.last_heartbeat_at) {
       // Keep only the latest check-in so the change itself stays in view.
       const last = $('log').lastElementChild;
       if (last && last.dataset.checkIn) last.remove();
