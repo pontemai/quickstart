@@ -85,8 +85,30 @@ ssh -o BatchMode=yes -o ConnectTimeout=10 <ssh-target> '
 
 Act on the result:
 
-- **SSH fails:** the user needs key-based SSH to the device. Ask them to fix it and
-  give you a target that works with `ssh <target>` and no password prompt.
+- **SSH fails with `Permission denied` or `Host key verification failed`:** the
+  device wants a password, a key passphrase or a host-key confirmation, and you
+  can't type one. Check whether an earlier run left a shared connection open:
+
+  ```bash
+  ssh -O check -o 'ControlPath=~/.ssh/pontem-%C' <ssh-target>
+  ```
+
+  If it isn't running, ask the user to run this in their own terminal and answer
+  the prompts there. It opens a connection in the background that your `ssh` calls
+  reuse, and it closes after 30 idle minutes:
+
+  ```bash
+  ssh -fN -o ControlMaster=yes -o ControlPersist=30m -o 'ControlPath=~/.ssh/pontem-%C' <ssh-target>
+  ```
+
+  Once it's open, use `-o 'ControlPath=~/.ssh/pontem-%C' <ssh-target>` as
+  the SSH target for the rest of this run, including after `--` in step 4, and run
+  the probe again. If their ssh can't do this (Windows OpenSSH has no
+  `ControlMaster`), have them run each command that needs SSH in their own terminal,
+  starting with this probe, and paste you the output.
+- **SSH fails any other way** (the host doesn't resolve, the connection times out or
+  is refused): ask the user for a target that `ssh <target>` reaches from this
+  machine.
 - **`uname -m` is not `x86_64` or `aarch64`, or systemd is missing:** stop. The
   device isn't supported.
 - **curl or Docker missing:** tell the user. Offer to install Docker with Docker's
@@ -119,6 +141,13 @@ where they can type the device's sudo password, and tell you when it finishes.
 
 Enrollment takes about a minute. If it fails after creating the device, the CLI
 prints a retry command with `--id` and `--token`. Run that instead of enrolling again.
+
+Once enrollment succeeds, close the shared SSH connection if the user opened one in
+step 3. Nothing after this needs SSH except step 7's fallback:
+
+```bash
+ssh -O exit -o 'ControlPath=~/.ssh/pontem-%C' <ssh-target>
+```
 
 Wait until the device reports in. Poll every 10 seconds, for up to 3 minutes:
 
@@ -220,6 +249,7 @@ pontem device connector enable --name <device-name> --yes
 If it says the connector package or app proxy isn't available on this control plane,
 tell the user their administrator has to enable app access, and skip to step 8.
 Use `ssh <ssh-target> curl -s localhost:<port>/config.json` for the before and after.
+If you closed a shared SSH connection in step 4, ask the user to open it again first.
 
 Publish the port as an app. Check `pontem app list` first; reuse an existing
 `quickstart` app on this device.
