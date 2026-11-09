@@ -1,7 +1,7 @@
 {
   "name": "pontem",
   "description": "Get started with Pontem: enroll a device, deploy a package, and change its config",
-  "version": "0.2.7",
+  "version": "0.2.9",
   "author": {
     "name": "Pontem AI"
   }
