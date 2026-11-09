@@ -91,8 +91,9 @@ body[data-live="lost"] .status-dot { animation: none; }
   letter-spacing: var(--track-display);
   overflow-wrap: anywhere;
   min-height: 1.02em;
+  transition: color 2s var(--ease-out);
 }
-#greeting.changed { color: var(--accent); transition: color 2s var(--ease-out); }
+#greeting.changed { color: var(--accent); transition: none; }
 .lead {
   max-width: 54ch; text-wrap: pretty;
   font-size: clamp(14px, 1.15vw, 17px); font-weight: 300; line-height: 1.55;
