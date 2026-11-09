@@ -123,7 +123,12 @@ Wait until the device reports in. Poll every 10 seconds, for up to 3 minutes:
 pontem device describe --name <device-name>
 ```
 
-Move on once it shows a recent report from the device.
+Once it shows a recent report from the device, have it check in every 5 seconds
+instead of the default 30, so the install and the config change land quickly:
+
+```bash
+pontem device settings set --name <device-name> --heartbeat-interval 5
+```
 
 ## Step 5: Publish the quickstart package
 
@@ -260,10 +265,10 @@ pontem config override set GREETING='<their text>' --namespace quickstart --scop
 Single quotes keep the shell from expanding `!`, `$` or backticks in their text. Write
 a single quote inside it as `'\''`.
 
-The device checks in every 30 seconds. It gets the change at its next check-in and
-restarts the service with the new value at the one after, so this takes about a
-minute. Poll `pontem curl <app> /config.json` every
-10 seconds until `boot_id` changes, for up to 3 minutes. Requests fail for a few
+The device checks in every 5 seconds. It gets the change at its next check-in and
+restarts the service with the new value soon after, so this takes about 20
+seconds. Poll `pontem curl <app> /config.json` every
+5 seconds until `boot_id` changes, for up to 2 minutes. Requests fail for a few
 seconds while the service restarts; keep polling. If it hasn't changed by
 then, run `pontem device package redeploy quickstart --name <device-name> --yes` and
 poll again.
@@ -289,6 +294,9 @@ files.
 
 Offer these next steps without running them:
 
+- Go back to the default 30-second check-ins, for a device on a metered link or
+  once the trial is over:
+  `pontem device settings set --name <device-name> --heartbeat-interval 30`
 - Revert the greeting:
   `pontem config override delete --namespace quickstart --scope device:<device-name> --key GREETING`
 - Remove the quickstart from the device:
