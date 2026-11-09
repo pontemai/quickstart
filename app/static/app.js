@@ -1,11 +1,13 @@
 // Quickstart page behavior.
 //
-// The page's status is this device's status in the Pontem API and nothing
-// else: device.json, polled every two seconds. When a field the page follows
-// changes, the activity log gets a line and the status pill and drawing
-// follow it: amber while a change is pending, green once the device is in
-// sync. config.json is this service, polled only for the greeting, so the new
-// value shows as soon as the service restarts with it.
+// The device in the drawing shows this device's sync status in the Pontem
+// API: device.json, polled every two seconds. It's blue while the device is in
+// sync, amber while a change is pending, and green for a few seconds once the
+// change lands before it fades back to blue. Each change the page sees gets a
+// line in the activity log.
+// config.json is this service, polled only for the greeting, so the new value
+// shows as soon as the service restarts with it. The pill in the header only
+// says whether the page itself is live.
 (function () {
   const $ = (id) => document.getElementById(id);
   const boot = JSON.parse($('boot').textContent);
@@ -77,42 +79,50 @@
   ].map((n) => n.toFixed(1)).join(' '));
 
   // ── State ──────────────────────────────────────────────
-  // One status, from the Pontem API. `connecting` and `unknown` are before or
-  // without a reading; `lost` means the page itself lost its session or service.
-  const STATUS = {
-    connecting: 'Connecting', unknown: 'No status', pending: 'Pending', synced: 'Synced',
-    failed: 'Failed', rolled_back: 'Rolled back', offline: 'Offline', lost: 'Unreachable',
-  };
-  let state = null;
+  // The drawing's device: `idle` (blue) in sync, `pending`, `synced` (green,
+  // briefly, as a change lands) or `failed`. `offline` and `unknown` are grey.
   let current = boot;
   let downSince = null;
+  let live = true;
 
-  function setState(next) {
-    state = next;
-    document.body.dataset.state = next;
-    $('status-text').textContent = STATUS[next];
+  function setLive(next) {
+    live = next;
+    document.body.dataset.live = next ? 'live' : 'lost';
+    $('status-text').textContent = next ? 'Live' : 'Not reachable';
   }
-  function statusOf(d) {
-    if (d.online === false) return 'offline';
-    if (d.sync_status === 'in_sync') return 'synced';
-    return STATUS[d.sync_status] ? d.sync_status : 'pending';
-  }
+  const setDevice = (next) => { document.body.dataset.device = next; };
 
   function clock(date) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
   }
+  function took(ms) {
+    const s = Math.round(ms / 1000);
+    return s < 90 ? s + 's' : Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+  }
 
-  function logLine(tone, text) {
+  // `since`, when given, is when the change in progress was saved; the line
+  // ends with the time since then.
+  function logLine(tone, text, since) {
+    const log = $('log');
+    const atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 8;
     const li = document.createElement('li');
     const time = document.createElement('time');
     time.textContent = clock(new Date());
     const msg = document.createElement('span');
     if (tone) msg.className = tone;
     msg.textContent = text;
+    if (since) {
+      const dur = document.createElement('span');
+      dur.className = 'dur';
+      dur.textContent = '+' + took(Date.now() - since);
+      dur.title = 'Since the change was saved';
+      msg.append(dur);
+    }
     li.append(time, msg);
-    const log = $('log');
     log.append(li);
-    while (log.children.length > 5) log.firstElementChild.remove();
+    while (log.children.length > 200) log.firstElementChild.remove();
+    // Follow new lines unless the reader has scrolled up to read older ones.
+    if (atEnd) log.scrollTop = log.scrollHeight;
   }
 
   // Scramble from the old greeting into the new one, left to right.
@@ -174,8 +184,8 @@
   let polling = true;
   function signedOut() {
     polling = false;
-    setState('lost');
-    logLine('warn', 'Your Pontem session ended. Reload to sign in again.');
+    setLive(false);
+    logLine('warn', 'Your Pontem session ended. Reload the page to sign in again.');
   }
   async function pollConfig() {
     if (!polling) return;
@@ -186,21 +196,26 @@
       if (err.message === 'signed-out') return signedOut();
       // The service restarts to take a change; only a long outage is news.
       if (downSince === null) downSince = Date.now();
-      else if (state !== 'lost' && Date.now() - downSince > LOST_AFTER_MS) {
-        setState('lost');
-        logLine('warn', "Can't reach this service. Reload the page if this persists.");
+      else if (live && Date.now() - downSince > LOST_AFTER_MS) {
+        setLive(false);
+        logLine('warn', "Can't reach this service for 2 minutes. Still trying; reload if it doesn't come back.");
       }
       return;
     }
     downSince = null;
-    if (state === 'lost') setState(pontem ? statusOf(pontem) : 'connecting');
+    if (!live) {
+      setLive(true);
+      logLine('', 'Reached this service again');
+    }
     if (next.boot_id === current.boot_id) return;
     const before = current.greeting;
     current = next;
     renderMeta();
     if (next.greeting !== before) {
       showGreeting(next.greeting, true, before);
-      logLine('em', 'GREETING is now ' + JSON.stringify(next.greeting));
+      logLine('em', 'Service restarted with GREETING = ' + JSON.stringify(next.greeting), savedAt);
+    } else {
+      logLine('', 'Service restarted; GREETING is unchanged', savedAt);
     }
   }
 
@@ -288,33 +303,84 @@
   const checkIn = (d) => 'Checked in ' + ago(d.last_heartbeat_at);
 
   // ── Pontem's view ──────────────────────────────────────
-  // Sets the status from each reading and logs what changed since the last one.
+  // Logs what changed since the last reading and recolors the device.
   let pontem = null;
-  const SYNC_LINES = {
-    pending: ['em', 'Change saved, device pending'],
-    in_sync: ['ok', 'Device is in sync'],
-    failed: ['warn', 'The change failed on the device'],
-    rolled_back: ['warn', 'The device rolled back the change'],
-  };
+  // When the page saw the change in progress saved; null when there's none.
+  let savedAt = null;
+  // Set while a change that just landed shows green, before fading back to blue.
+  const LANDED_MS = 5000;
+  let landedTimer = null;
+  function landed() {
+    clearTimeout(landedTimer);
+    landedTimer = setTimeout(() => {
+      landedTimer = null;
+      if (document.body.dataset.device === 'synced') setDevice('idle');
+    }, LANDED_MS);
+  }
+  const failed = (d) => d.sync_status === 'failed' || d.sync_status === 'rolled_back';
   // At its first check-in after a save, the device reports the new version as its target.
   const updating = (d) => d.sync_status === 'pending' && d.device_config_version >= d.config_version;
+  function deviceState(d) {
+    if (d.online === false) return 'offline';
+    if (d.sync_status === 'pending') return 'pending';
+    if (failed(d)) return 'failed';
+    return landedTimer ? 'synced' : 'idle';
+  }
+
+  function firstReading(d) {
+    const v = 'config v' + d.config_version;
+    if (d.online === false) {
+      logLine('warn', 'Device is offline. It last checked in ' + ago(d.last_heartbeat_at) + '.');
+    } else if (d.sync_status === 'pending') {
+      logLine('em', v + ' is already on its way to the device');
+    } else if (d.sync_status === 'failed') {
+      logLine('warn', 'The device\'s last change failed (' + v + ')');
+    } else if (d.sync_status === 'rolled_back') {
+      logLine('warn', 'The device rolled back its last change (' + v + ')');
+    } else {
+      logLine('', 'Device is in sync on ' + v + ', checking in every ' + d.heartbeat_interval_seconds + 's');
+    }
+  }
+
   function trackPontem(d) {
     const prev = pontem;
     pontem = d;
-    if (state !== 'lost') setState(statusOf(d));
     if (!prev) {
-      if (d.sync_status === 'pending') logLine('em', 'Device has a change pending');
+      firstReading(d);
+      setDevice(deviceState(d));
       return;
     }
+    const v = 'config v' + d.config_version;
     if (d.online !== prev.online) {
-      logLine(d.online ? '' : 'warn', d.online ? 'Device is back online' : 'Device went offline');
+      if (d.online) logLine('', 'Device is checking in again');
+      else logLine('warn', 'Device stopped checking in. Its last check-in was ' + ago(d.last_heartbeat_at) + '.');
     }
-    if (d.sync_status !== prev.sync_status && SYNC_LINES[d.sync_status]) {
-      logLine(...SYNC_LINES[d.sync_status]);
-    } else if (d.sync_status === 'pending' && d.config_version > prev.config_version) {
-      logLine('em', 'Another change saved');
+    const saved = d.config_version > prev.config_version;
+    if (d.sync_status === 'pending' && (prev.sync_status !== 'pending' || saved)) {
+      if (prev.sync_status === 'pending') {
+        logLine('em', 'Saved ' + v + ' on top of it', savedAt);
+      } else {
+        savedAt = Date.now();
+        logLine('em', 'Saved ' + v + '. The device gets it at its next check-in.');
+      }
     }
-    if (updating(d) && !updating(prev)) logLine('', 'Device is updating');
+    if (updating(d) && !updating(prev)) logLine('', 'Device checked in and got the change', savedAt);
+    if (d.sync_status !== prev.sync_status) {
+      if (d.sync_status === 'in_sync') {
+        landed();
+        logLine('ok', 'In sync: the device applied ' + v, savedAt);
+      } else if (d.sync_status === 'failed') {
+        logLine('warn', v + ' failed on the device. View it in Pontem for why.', savedAt);
+      } else if (d.sync_status === 'rolled_back') {
+        logLine('warn', 'The device rolled back ' + v + ' and kept its last config', savedAt);
+      }
+      if (d.sync_status !== 'pending') savedAt = null;
+    } else if (d.sync_status === 'in_sync' && saved) {
+      // Saved and applied between two readings, so the page never saw it pending.
+      landed();
+      logLine('ok', 'In sync: the device applied ' + v);
+    }
+    setDevice(deviceState(d));
   }
   async function pollDevice() {
     let result;
@@ -326,7 +392,7 @@
     }
     renderDevice(result);
     if (!result.ok) {
-      if (state === 'connecting') setState('unknown');
+      if (!pontem) setDevice('unknown');
       return;
     }
     if (!result.stale) trackPontem(result.device);
@@ -356,10 +422,12 @@
     viewer.querySelector('b').textContent = boot.viewer;
     viewer.hidden = false;
   }
-  setState('connecting');
+  setLive(true);
+  setDevice('idle');
   showGreeting(boot.greeting, false);
   renderMeta();
-  logLine('', 'Connected' + (boot.version ? ' · quickstart v' + boot.version : ''));
+  logLine('', 'Page opened' + (boot.version ? ' · quickstart v' + boot.version : '') +
+    ' · GREETING = ' + JSON.stringify(boot.greeting));
   pollDevice();
   setInterval(pollConfig, CONFIG_POLL_MS);
   setInterval(pollDevice, DEVICE_POLL_MS);
