@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/pontemai/quickstart:0.2.3
+    image: ghcr.io/pontemai/quickstart:0.2.4
     restart: unless-stopped
     ports:
       # Loopback only: the app link reaches it through the connector on the
