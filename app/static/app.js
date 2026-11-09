@@ -125,8 +125,10 @@
     if (atEnd) log.scrollTop = log.scrollHeight;
   }
 
-  // Scramble from the old greeting into the new one, left to right.
-  // `before` is the value it replaced, shown under the new one until the next change.
+  // Fade the old greeting out and the new one in, which lands in the accent
+  // color and eases back. `before` is the value it replaced, shown under the
+  // new one until the next change.
+  let tintTimer = null;
   function showGreeting(text, animate, before) {
     const el = $('greeting');
     const kv = $('kv-greeting');
@@ -135,28 +137,23 @@
     if (before !== undefined) $('kv-was').textContent = 'was ' + JSON.stringify(before);
     if (!animate) { el.textContent = text; return; }
     kv.classList.remove('flash'); void kv.offsetWidth; kv.classList.add('flash');
-    el.classList.add('changed');
-    setTimeout(() => el.classList.remove('changed'), 2500);
-    if (reduced) { el.textContent = text; return; }
-    const glyphs = '<>/\\|=+*#_-';
-    const chars = Array.from(text);
-    const start = performance.now();
-    const duration = Math.min(1400, 400 + chars.length * 40);
-    // Hold the final text's height so the scramble can't reflow the page.
-    el.textContent = text;
-    el.style.height = el.getBoundingClientRect().height + 'px';
-    el.style.overflow = 'hidden';
-    (function frame(now) {
-      const p = Math.min(1, (now - start) / duration);
-      const settled = Math.floor(p * chars.length);
-      el.textContent = chars.map((ch, i) =>
-        i < settled || ch === ' ' ? ch : glyphs[(Math.random() * glyphs.length) | 0]
-      ).join('');
-      if (p < 1) { requestAnimationFrame(frame); return; }
+    const swap = () => {
       el.textContent = text;
-      el.style.height = '';
-      el.style.overflow = '';
-    })(start);
+      el.classList.add('changed');
+      clearTimeout(tintTimer);
+      tintTimer = setTimeout(() => el.classList.remove('changed'), 600);
+    };
+    if (reduced) { swap(); return; }
+    const out = el.animate(
+      [{ opacity: 1 }, { opacity: 0, transform: 'translateY(-0.08em)' }],
+      { duration: 150, easing: 'ease-in', fill: 'forwards' });
+    out.onfinish = () => {
+      swap();
+      out.cancel();
+      el.animate(
+        [{ opacity: 0, transform: 'translateY(0.08em)' }, { opacity: 1, transform: 'none' }],
+        { duration: 250, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+    };
   }
 
   function renderMeta() {
