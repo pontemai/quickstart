@@ -4,7 +4,8 @@ description: >
   Use when someone wants to try Pontem end to end: install the pontem CLI, log in,
   enroll a Linux device over SSH, publish and install the quickstart compose package
   with its config namespace, open the running service through a browser link, then
-  change a config value and watch it land on the device. Triggers: "/pontem:quickstart",
+  change a config value and watch it land on the device, and connect Claude Code to
+  Pontem's MCP server. Triggers: "/pontem:quickstart",
   "onboard me to Pontem", "set up Pontem on my device", "Pontem quickstart".
 ---
 
@@ -323,13 +324,49 @@ Show the user what changed, as a small before and after table of `greeting` and
   as the change was saved, green once Pontem had the device back in sync. Its
   activity log has a line for each change in between.
 
+## Step 9: Connect Claude to Pontem
+
+Pontem's MCP server lets Claude answer questions about the user's devices: their
+status, metrics, logs and history. It's read-only. Ask the user whether to add it
+to Claude Code. If they say no, go to the wrap-up.
+
+Its host is the control plane with `mcp.` after the first label, so
+`pontem.acme.com` becomes `pontem.mcp.acme.com`. Check it's there before adding it:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}' -X POST https://<mcp-host>/mcp
+```
+
+`401` means it's there and wants a sign-in. Anything else means it isn't at that
+address: point the user at **Install the MCP Server** in the admin app's docs,
+`https://<control-plane>/admin/docs/install-mcp-server`, and go to the wrap-up.
+
+If `claude mcp get pontem` already shows this URL, skip adding it. If it shows
+another URL, ask before replacing it with `claude mcp remove pontem -s user`.
+Add it for every project, since this session may be running in a temporary
+directory:
+
+```bash
+claude mcp add --transport http --scope user pontem https://<mcp-host>/mcp
+```
+
+You can't sign in for the user. Tell them to run `/mcp`, select **pontem**, and
+sign in in the browser with the account they use for the admin app. If `pontem`
+isn't in that list, they need to restart Claude Code first; `claude --continue`
+brings this conversation back.
+
+When they say they're signed in, answer one question with the pontem tools to show
+it works: how `<device-name>` is doing, when it last checked in, and which packages
+it runs. Then suggest a few questions they can ask on their own, like "Which of my
+devices are offline?" or "Show <device-name>'s CPU for the last hour."
+
 ## Wrap up
 
 Tell the user what they now have, in one short list: the enrolled device, the
 `quickstart` package and version, the `quickstart` config namespace and their
-device override, the `sa_quickstart` service account and its 30-day key, and the
-app link. Point them at `./pontem-quickstart/` for the
-files.
+device override, the `sa_quickstart` service account and its 30-day key, the
+app link, and the pontem MCP server in Claude Code if they added it. Point them
+at `./pontem-quickstart/` for the files.
 
 Offer these next steps without running them:
 
@@ -340,6 +377,7 @@ Offer these next steps without running them:
   `pontem config override delete --namespace quickstart --scope device:<device-name> --key GREETING`
 - Remove the quickstart from the device:
   `pontem app remove <app>` and `pontem device package remove quickstart --name <device-name>`
+- Remove the MCP server from Claude Code: `claude mcp remove pontem -s user`
 - Revoke the page's key: find its ID with `pontem service-account key list --sa <sa-id>`,
   then `pontem service-account key revoke <key-id> --sa <sa-id>`. The page's
   device panel stops working; the rest of the page keeps running.
