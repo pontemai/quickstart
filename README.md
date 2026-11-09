@@ -10,7 +10,7 @@ it, and walks you through changing its config.
 - [Claude Code](https://docs.claude.com/en/docs/claude-code)
 - A Pontem account, and the admin app URL for your organization
 - A Linux device (x86_64 or ARM64) with systemd and Docker, reachable from your
-  machine with key-based `ssh`
+  machine with `ssh` (a key or a password both work)
 
 ## Run it
 
