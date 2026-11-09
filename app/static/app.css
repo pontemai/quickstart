@@ -9,6 +9,7 @@
   --fig-live-t: var(--accent); --fig-live-l: #1F3653; --fig-live-r: #14253B;
   --fig-success-l: #0C4A35; --fig-success-r: #083324;
   --fig-rolling-l: #5C3F0A; --fig-rolling-r: #3D2A07;
+  --fig-failed-l: #5C1A16; --fig-failed-r: #3D110E;
   --fig-plate: rgba(255, 255, 255, 0.012);
 }
 
@@ -60,11 +61,8 @@ body {
   width: 6px; height: 6px; border-radius: 50%; background: currentColor;
   animation: pontem-pulse 2s infinite var(--ease-in-out);
 }
-body[data-state="pending"] .status { color: var(--accent); }
-body[data-state="applying"] .status { color: var(--tone-warning-accent); }
-body[data-state="lost"] .status { color: var(--fg-subtle); }
-body[data-state="lost"] .status-dot { animation: none; }
-
+body[data-live="lost"] .status { color: var(--fg-subtle); }
+body[data-live="lost"] .status-dot { animation: none; }
 
 /* ── Hero ────────────────────────────── */
 .hero {
@@ -130,23 +128,32 @@ body[data-state="lost"] .status-dot { animation: none; }
 }
 .kv dt { color: var(--fg-subtle); }
 .kv dd { color: var(--fg); overflow-wrap: anywhere; }
-.kv dd.flash { animation: kv-flash 2.5s var(--ease-out); }
+.kv .flash { animation: kv-flash 2.5s var(--ease-out); }
+.kv .was { display: block; color: var(--fg-disabled); font-size: 12px; }
+.kv .was[hidden] { display: none; }
 @keyframes kv-flash {
   from { background: color-mix(in srgb, var(--accent) 30%, transparent); }
   to   { background: transparent; }
 }
 .log {
   list-style: none;
-  height: calc(22px * 5 + 20px); padding: 10px 14px; overflow: hidden;
-  display: flex; flex-direction: column; justify-content: flex-end;
+  height: calc(22px * 6 + 20px); padding: 10px 14px; overflow-y: auto;
+  display: flex; flex-direction: column;
   font-size: 12.5px; line-height: 22px; color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
+  scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent;
+  /* Fade lines out at the top edge as they scroll away. */
+  mask-image: linear-gradient(to bottom, transparent 0, #000 12px);
 }
-.log li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.log time { color: var(--fg-disabled); margin-right: 12px; }
+/* Short logs sit at the bottom. An auto margin does that and, unlike
+   justify-content: flex-end, still lets a long log scroll to its top. */
+.log li:first-child { margin-top: auto; }
+.log li { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; }
+.log time { color: var(--fg-disabled); }
 .log .ok { color: var(--tone-success-accent); }
 .log .warn { color: var(--tone-warning-accent); }
 .log .em { color: var(--fg); }
+.log .dur { color: var(--fg-disabled); margin-left: 8px; white-space: nowrap; }
 
 .try {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -200,36 +207,41 @@ body[data-state="lost"] .status-dot { animation: none; }
   fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round;
   stroke-dasharray: 0.06 1; stroke-dashoffset: 0.06; opacity: 0;
 }
-/* Pending: the change waits in Pontem for the next check-in. Applying: it's landing. */
-body[data-state="pending"] .packet { opacity: 1; animation: packet 2400ms linear infinite; }
-body[data-state="applying"] .packet { opacity: 1; animation: packet 1600ms linear infinite; }
+/* Pending: a change is on its way to the device. */
+body[data-device="pending"] .packet { stroke: var(--warning); opacity: 1; animation: packet 2400ms linear infinite; }
 @keyframes packet { to { stroke-dashoffset: -1; } }
 
+/* The device: blue in sync, amber pending, green for a few seconds as a change
+   lands, red failed. Grey when offline or unknown. The way back to blue is a
+   slow fade. */
 .dev .f-t { fill: var(--fig-off-t); stroke: var(--line-strong); }
 .dev .f-l { fill: var(--fig-off-l); stroke: var(--line); }
 .dev .f-r { fill: var(--fig-off-r); stroke: var(--line); }
 .dev .s { stroke: var(--line-strong); }
-body[data-state="live"] .dev .f-t,
-body[data-state="pending"] .dev .f-t { fill: var(--fig-live-t); stroke: var(--bg); }
-body[data-state="live"] .dev .f-l,
-body[data-state="pending"] .dev .f-l { fill: var(--fig-live-l); stroke: var(--bg); }
-body[data-state="live"] .dev .f-r,
-body[data-state="pending"] .dev .f-r { fill: var(--fig-live-r); stroke: var(--bg); }
-body[data-state="live"] .dev .s,
-body[data-state="pending"] .dev .s { stroke: var(--fig-live-t); }
-body[data-state="applying"] .dev .f-t { fill: var(--warning); stroke: var(--bg); }
-body[data-state="applying"] .dev .f-l { fill: var(--fig-rolling-l); stroke: var(--bg); }
-body[data-state="applying"] .dev .f-r { fill: var(--fig-rolling-r); stroke: var(--bg); }
-body[data-state="applying"] .dev .s { stroke: var(--warning); }
-body[data-state="applying"] .plate { stroke: var(--warning); }
-body[data-state="success"] .dev .f-t { fill: var(--success); stroke: var(--bg); }
-body[data-state="success"] .dev .f-l { fill: var(--fig-success-l); stroke: var(--bg); }
-body[data-state="success"] .dev .f-r { fill: var(--fig-success-r); stroke: var(--bg); }
-body[data-state="success"] .dev .s { stroke: var(--success); }
-body[data-state="success"] .plate { stroke: var(--success); }
+body[data-device="idle"] .dev .f-t { fill: var(--fig-live-t); stroke: var(--bg); }
+body[data-device="idle"] .dev .f-l { fill: var(--fig-live-l); stroke: var(--bg); }
+body[data-device="idle"] .dev .f-r { fill: var(--fig-live-r); stroke: var(--bg); }
+body[data-device="idle"] .dev .s { stroke: var(--fig-live-t); }
+body[data-device="idle"] :is(.dev .f, .dev .s, .plate) { transition-duration: 2s; }
+body[data-device="synced"] .dev .f-t { fill: var(--success); stroke: var(--bg); }
+body[data-device="synced"] .dev .f-l { fill: var(--fig-success-l); stroke: var(--bg); }
+body[data-device="synced"] .dev .f-r { fill: var(--fig-success-r); stroke: var(--bg); }
+body[data-device="synced"] .dev .s { stroke: var(--success); }
+body[data-device="synced"] .plate { stroke: var(--success); }
+body[data-device="pending"] .dev .f-t { fill: var(--warning); stroke: var(--bg); }
+body[data-device="pending"] .dev .f-l { fill: var(--fig-rolling-l); stroke: var(--bg); }
+body[data-device="pending"] .dev .f-r { fill: var(--fig-rolling-r); stroke: var(--bg); }
+body[data-device="pending"] .dev .s { stroke: var(--warning); }
+body[data-device="pending"] .plate { stroke: var(--warning); }
+body[data-device="failed"] .dev .f-t { fill: var(--error); stroke: var(--bg); }
+body[data-device="failed"] .dev .f-l { fill: var(--fig-failed-l); stroke: var(--bg); }
+body[data-device="failed"] .dev .f-r { fill: var(--fig-failed-r); stroke: var(--bg); }
+body[data-device="failed"] .dev .s { stroke: var(--error); }
+body[data-device="failed"] .plate { stroke: var(--error); }
 .antenna-tip { fill: var(--fg-subtle); }
-body[data-state="live"] .antenna-tip,
-body[data-state="pending"] .antenna-tip { fill: var(--accent); animation: pontem-pulse 2s infinite var(--ease-in-out); }
+body[data-device="idle"] .antenna-tip { fill: var(--accent); animation: pontem-pulse 2s infinite var(--ease-in-out); }
+body[data-device="synced"] .antenna-tip { fill: var(--success); animation: pontem-pulse 2s infinite var(--ease-in-out); }
+body[data-device="pending"] .antenna-tip { fill: var(--warning); animation: pontem-pulse 1s infinite var(--ease-in-out); }
 
 /* Spec sheet under the drawing: this device as the Pontem API reports it */
 .spec-head {
@@ -285,9 +297,13 @@ body[data-state="pending"] .antenna-tip { fill: var(--accent); animation: pontem
   .nav-logo svg { height: 16px; }
 }
 @media (max-width: 420px) {
+  .nav-right { gap: 8px; }
   .status { padding: 0 8px; }
-  #status-text, .cta-long { display: none; }
+  .cta-long { display: none; }
   .cta { padding: 0 10px; }
+}
+@media (max-width: 379px) {
+  .cta-mid { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

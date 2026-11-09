@@ -126,7 +126,12 @@ Wait until the device reports in. Poll every 10 seconds, for up to 3 minutes:
 pontem device describe --name <device-name>
 ```
 
-Move on once it shows a recent report from the device.
+Once it shows a recent report from the device, have it check in every 5 seconds
+instead of the default 30, so the install and the config change land quickly:
+
+```bash
+pontem device settings set --name <device-name> --heartbeat-interval 5
+```
 
 ## Step 5: Publish the quickstart package
 
@@ -263,9 +268,10 @@ pontem config override set GREETING='<their text>' --namespace quickstart --scop
 Single quotes keep the shell from expanding `!`, `$` or backticks in their text. Write
 a single quote inside it as `'\''`.
 
-The device picks the change up on its next check-in, about every 30 seconds, and
-restarts the service with the new value. Poll `pontem curl <app> /config.json` every
-10 seconds until `boot_id` changes, for up to 3 minutes. Requests fail for a few
+The device checks in every 5 seconds. It gets the change at its next check-in and
+restarts the service with the new value soon after, so this takes about 20
+seconds. Poll `pontem curl <app> /config.json` every
+5 seconds until `boot_id` changes, for up to 2 minutes. Requests fail for a few
 seconds while the service restarts; keep polling. If it hasn't changed by
 then, run `pontem device package redeploy quickstart --name <device-name> --yes` and
 poll again.
@@ -277,10 +283,9 @@ Show the user what changed, as a small before and after table of `greeting` and
   device only.
 - The daemon on the device restarted the service with the new value. Nobody
   published a new package version.
-- The open page followed the change: Pontem marked it pending as soon as it was
-  saved, the device picked it up at its next check-in and restarted the service,
-  and Pontem confirmed it in sync at the check-in after. Its activity log lists
-  each step.
+- The open page followed the device as the Pontem API reports it: amber as soon
+  as the change was saved, green once Pontem had the device back in sync. Its
+  activity log has a line for each change in between.
 
 ## Wrap up
 
@@ -292,6 +297,9 @@ files.
 
 Offer these next steps without running them:
 
+- Go back to the default 30-second check-ins, for a device on a metered link or
+  once the trial is over:
+  `pontem device settings set --name <device-name> --heartbeat-interval 30`
 - Revert the greeting:
   `pontem config override delete --namespace quickstart --scope device:<device-name> --key GREETING`
 - Remove the quickstart from the device:
