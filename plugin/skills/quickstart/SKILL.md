@@ -58,14 +58,20 @@ pontem status --url <control-plane>
 `pontem status` shows the saved control plane, sometimes by a short environment
 name like `prod` instead of its URL. With `--url` it shows the one from the inputs.
 If both name the same control plane, the tenant is right, and the token is valid,
-skip ahead. Otherwise:
+skip ahead. On a fresh install `pontem status` fails with "no control plane
+configured", which only means nobody has logged in yet.
+
+Log in with the device flow. The user signs in from a browser on any computer, so
+it works when this machine has no browser, like a server or an SSH session. It
+waits until they approve, so run it in the background:
 
 ```bash
-pontem login --url <control-plane> --tenant <tenant>
+pontem login --device --url <control-plane> --tenant <tenant>
 ```
 
-This opens a browser. Tell the user to finish signing in there, then re-run
-`pontem status` to confirm.
+Within a few seconds it prints a sign-in URL and a code. Put the URL in your
+message on its own line, with the code so the user can check it matches the page.
+Once the command exits, re-run `pontem status` to confirm.
 
 ## Step 3: Check the device
 
