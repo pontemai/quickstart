@@ -4,7 +4,8 @@ description: >
   Use when someone wants to try Pontem end to end: install the pontem CLI, log in,
   enroll a Linux device over SSH, publish and install the quickstart compose package
   with its config namespace, open the running service through a browser link, then
-  change a config value and watch it land on the device. Triggers: "/pontem:quickstart",
+  change a config value and watch it land on the device, and connect Claude Code or
+  Codex to Pontem's MCP server. Triggers: "/pontem:quickstart",
   "onboard me to Pontem", "set up Pontem on my device", "Pontem quickstart".
 ---
 
@@ -323,13 +324,51 @@ Show the user what changed, as a small before and after table of `greeting` and
   as the change was saved, green once Pontem had the device back in sync. Its
   activity log has a line for each change in between.
 
+## Step 9: Connect coding agents to Pontem
+
+Pontem's MCP server lets a coding agent answer questions about the user's devices:
+their status, metrics, logs and history. It's read-only. Check which agents are
+installed with `command -v claude codex`, and ask the user which of them to
+connect. If they say none, go to the wrap-up.
+
+Its host is the control plane with `mcp.` after the first label, so
+`pontem.acme.com` becomes `pontem.mcp.acme.com`. Check it's there before adding it:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}' -X POST https://<mcp-host>/mcp
+```
+
+`401` means it's there and wants a sign-in. Anything else means it isn't at that
+address: point the user at **Install the MCP Server** in the admin app's docs,
+`https://<control-plane>/admin/docs/install-mcp-server`, and go to the wrap-up.
+
+Don't sign the user in here. The sign-in is the user's, and the wrap-up ends
+with how to do it, once everything else is done.
+
+### Claude Code
+
+If `claude mcp get pontem` already shows this URL, skip adding it. If it shows
+another URL, ask before replacing it with `claude mcp remove pontem -s <scope>`,
+using the scope `get` reports. Add it for every project, since this session may
+be running in a temporary directory:
+
+```bash
+claude mcp add --transport http --scope user pontem https://<mcp-host>/mcp
+```
+
+### Codex
+
+Adding the server to Codex starts its sign-in, so leave the adding to the user
+too: the wrap-up gives them the command. If `codex mcp list` already shows
+`pontem` with another URL, ask before replacing it with `codex mcp remove pontem`.
+
 ## Wrap up
 
 Tell the user what they now have, in one short list: the enrolled device, the
 `quickstart` package and version, the `quickstart` config namespace and their
-device override, the `sa_quickstart` service account and its 30-day key, and the
-app link. Point them at `./pontem-quickstart/` for the
-files.
+device override, the `sa_quickstart` service account and its 30-day key, the
+app link, and the agents set up for the pontem MCP server. Point them at
+`./pontem-quickstart/` for the files.
 
 Offer these next steps without running them:
 
@@ -340,9 +379,33 @@ Offer these next steps without running them:
   `pontem config override delete --namespace quickstart --scope device:<device-name> --key GREETING`
 - Remove the quickstart from the device:
   `pontem app remove <app>` and `pontem device package remove quickstart --name <device-name>`
+- Disconnect an agent from the MCP server: `claude mcp remove pontem -s user`
+  or `codex mcp remove pontem`
 - Revoke the page's key: find its ID with `pontem service-account key list --sa <sa-id>`,
   then `pontem service-account key revoke <key-id> --sa <sa-id>`. The page's
   device panel stops working; the rest of the page keeps running.
 - Renew the key before it expires in 30 days: issue a new one and publish it as
   a new version of the secret, then point `API_KEY` at that version.
   `pontem service-account key create --sa <sa-id> --name quickstart-page --expires 30d | tr -d '\n' | pontem secrets publish quickstart-api-key --from-file -`
+
+### Sign in to the MCP server
+
+If the user picked an agent in step 9, end your message with how to sign it in,
+after the next steps, so it's the last thing they read. They sign in with the
+account they use for the admin app.
+
+- **Claude Code:** run `/mcp`, select **pontem**, and sign in in the browser.
+  If **pontem** isn't in that list, restart Claude Code first:
+  `cd <this session's directory> && claude --continue` brings this conversation
+  back. If Claude Code runs on a different machine from their browser, as over
+  SSH, the browser can't reach the sign-in's `localhost` callback. Instead they
+  run `claude mcp login pontem --no-browser` in a terminal on that machine,
+  open the link it prints, and paste back the address the browser ends on.
+- **Codex:** run `codex mcp add pontem --url https://<mcp-host>/mcp`. It saves
+  the server, then starts the sign-in. If Codex runs on a different machine from
+  their browser, they press Ctrl-C when it waits and run
+  `codex mcp login pontem --no-browser` instead. A Codex session picks up the
+  server when it starts.
+
+Then give them a first question to ask once they're signed in, like "How is
+<device-name> doing?" or "Which of my devices are offline?"

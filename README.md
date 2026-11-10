@@ -3,7 +3,8 @@
 Go from nothing to a service running on your own device, managed by Pontem, in
 about ten minutes. Claude Code does the work: it installs the `pontem` CLI, enrolls
 your device, deploys a small web page with a config namespace, gives you a link to
-it, and walks you through changing its config.
+it, walks you through changing its config, and connects Claude Code or Codex to
+Pontem's MCP server so you can ask about your devices.
 
 ## What you need
 
