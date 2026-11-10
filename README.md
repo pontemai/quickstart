@@ -30,11 +30,16 @@ Then:
 
 Claude asks for your admin app URL and the device to use.
 
+With the plugin installed, ask Claude for other Pontem work, like deploying an
+app, changing config or setting up a registry, and the `cli` skill has it read
+`pontem guide` first. `/pontem:cli` invokes it directly.
+
 ## What's here
 
 | Path | What it is |
 |---|---|
 | `plugin/skills/quickstart/SKILL.md` | The steps Claude follows |
+| `plugin/skills/cli/SKILL.md` | Has Claude read `pontem guide` before other Pontem work |
 | `plugin/skills/quickstart/package/` | The compose package and config namespace it deploys |
 | `app/` | Source for the `ghcr.io/pontemai/quickstart` image |
 
