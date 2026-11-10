@@ -38,9 +38,9 @@ app, changing config or setting up a registry, and the `cli` skill has it read
 
 | Path | What it is |
 |---|---|
-| `plugin/skills/quickstart/SKILL.md` | The steps Claude follows |
-| `plugin/skills/cli/SKILL.md` | Has Claude read `pontem guide` before other Pontem work |
+| `plugin/skills/quickstart/SKILL.md` | The quickstart steps Claude follows |
 | `plugin/skills/quickstart/package/` | The compose package and config namespace it deploys |
+| `plugin/skills/cli/SKILL.md` | Has Claude read `pontem guide` before other Pontem work |
 | `app/` | Source for the `ghcr.io/pontemai/quickstart` image |
 
 ## How the page reads its device
