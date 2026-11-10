@@ -43,8 +43,8 @@ work from `--help` as in the last case.
   curl -sSL https://storage.googleapis.com/pontem-cli-releases/install.sh | bash
   ```
 
-  It lands in `~/.local/bin`. If `command -v pontem` names another path, call it
-  as `~/.local/bin/pontem`.
+  It lands in `~/.local/bin`. Unless `command -v pontem` prints
+  `~/.local/bin/pontem`, call it as `~/.local/bin/pontem` from here on.
 - **The API key is rejected:** `PONTEM_API_KEY` is set and the control plane
   refused it. Logging in won't help while it's set. Ask the user to fix or unset
   it where it's set and restart this session, and stop. Don't ask them to paste a
