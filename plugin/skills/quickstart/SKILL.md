@@ -358,9 +358,27 @@ claude mcp add --transport http --scope user pontem https://<mcp-host>/mcp
 
 ### Codex
 
-Adding the server to Codex starts its sign-in, so leave the adding to the user
-too: the wrap-up gives them the command. If `codex mcp list` already shows
-`pontem` with another URL, ask before replacing it with `codex mcp remove pontem`.
+Check `codex mcp get pontem`. If it already shows this URL and is enabled, reuse
+it. If it shows another URL or is disabled, ask before replacing it with
+`codex mcp remove pontem`. If the check fails for anything other than a missing
+server, resolve that error before changing the configuration.
+
+If the server is missing or you removed it with permission, register the
+connection yourself, in a terminal session you can interrupt:
+
+```bash
+codex mcp add pontem --url https://<mcp-host>/mcp
+```
+
+Codex saves the connection before starting OAuth. Once it prints
+`Added global MCP server 'pontem'.`, if it waits for browser sign-in, interrupt
+this command with Ctrl-C. Leave sign-in to the user in the wrap-up. If it exits
+with an OAuth error after saving, the connection may still be registered.
+
+Run `codex mcp get pontem` again and verify the URL and that it is enabled before
+reporting it as configured. If registration failed, show the error and don't
+claim Codex is set up. A saved connection still needs the user's sign-in; it
+doesn't add tools to the current Codex session.
 
 ## Wrap up
 
@@ -401,11 +419,12 @@ account they use for the admin app.
   SSH, the browser can't reach the sign-in's `localhost` callback. Instead they
   run `claude mcp login pontem --no-browser` in a terminal on that machine,
   open the link it prints, and paste back the address the browser ends on.
-- **Codex:** run `codex mcp add pontem --url https://<mcp-host>/mcp`. It saves
-  the server, then starts the sign-in. If Codex runs on a different machine from
-  their browser, they press Ctrl-C when it waits and run
-  `codex mcp login pontem --no-browser` instead. A Codex session picks up the
-  server when it starts.
+- **Codex:** after verifying registration in step 9, run `codex mcp login pontem`
+  in a terminal and sign in with the account used for the admin app. If Codex
+  runs on a different machine from their browser, use
+  `codex mcp login pontem --no-browser` instead: open the printed link and paste
+  the final callback URL into that terminal. Once signed in, start a new Codex
+  session to pick up the server.
 
 Then give them a first question to ask once they're signed in, like "How is
 <device-name> doing?" or "Which of my devices are offline?"

@@ -1,21 +1,21 @@
 # Pontem quickstart
 
 Go from nothing to a service running on your own device, managed by Pontem, in
-about ten minutes. Claude Code does the work: it installs the `pontem` CLI, enrolls
+about ten minutes. Claude Code or Codex does the work: it installs the `pontem` CLI, enrolls
 your device, deploys a small web page with a config namespace, gives you a link to
 it, walks you through changing its config, and connects Claude Code or Codex to
 Pontem's MCP server so you can ask about your devices.
 
 ## What you need
 
-- [Claude Code](https://docs.claude.com/en/docs/claude-code)
+- [Claude Code](https://docs.claude.com/en/docs/claude-code) or Codex, with terminal access
 - A Pontem account, and the admin app URL for your organization
 - A Linux device (x86_64 or ARM64) with systemd and Docker, reachable from your
   machine with `ssh` (a key or a password both work)
 
 ## Run it
 
-In Claude Code:
+### Claude Code
 
 ```
 /plugin marketplace add pontemai/quickstart
@@ -34,13 +34,33 @@ With the plugin installed, ask Claude for other Pontem work, like deploying an
 app, changing config or setting up a registry, and the `cli` skill has it read
 `pontem guide` first. `/pontem:cli` invokes it directly.
 
+### Codex
+
+Paste this into Codex, replacing the admin URL and SSH target with your own:
+
+```text
+Set me up on Pontem with the quickstart at https://github.com/pontemai/quickstart.
+Clone it to a temporary directory, then read plugin/skills/quickstart/SKILL.md and
+follow it step by step. That file's directory is the skill directory it refers to.
+
+My Pontem admin URL: https://<control-plane>/admin/o/<tenant>
+My device (SSH target): <user@host or SSH alias>
+```
+
+Codex follows the same quickstart and can register Pontem's MCP connection for
+you. You complete browser sign-in at the end, then start a new Codex session to
+use it. The connection uses Pontem's hosted MCP server; it doesn't deploy one.
+
+For later Pontem work, ask Codex to read `plugin/skills/cli/SKILL.md` from the
+cloned repository and follow it. The Claude plugin commands above aren't needed.
+
 ## What's here
 
 | Path | What it is |
 |---|---|
-| `plugin/skills/quickstart/SKILL.md` | The quickstart steps Claude follows |
+| `plugin/skills/quickstart/SKILL.md` | The quickstart steps Claude Code or Codex follows |
 | `plugin/skills/quickstart/package/` | The compose package and config namespace it deploys |
-| `plugin/skills/cli/SKILL.md` | Has Claude read `pontem guide` before other Pontem work |
+| `plugin/skills/cli/SKILL.md` | Has the agent read `pontem guide` before other Pontem work |
 | `app/` | Source for the `ghcr.io/pontemai/quickstart` image |
 
 ## How the page reads its device
